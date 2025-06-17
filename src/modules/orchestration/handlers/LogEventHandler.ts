@@ -1,10 +1,9 @@
 import { IGitHubRepository } from '../../github-access/domain/ports/IGitHubRepository';
 import { IAIService, AnalysisData } from '../../ai-prompting/domain/ports/IAIService';
 import { IAlertService, Alert } from '../../alerting/domain/ports/IAlertService';
-import { IDocumentationService } from '../../documentation/domain/ports/IDocumentationService';
+import { IDocumentationService, TechnicalInsight } from '../../documentation/domain/ports/IDocumentationService';
 import { CodeContext } from '../../github-access/domain/CodeContext';
 import { AnaliseIA } from '../../ai-prompting/domain/entities/AnaliseIA';
-import { TechnicalInsight } from '../../documentation/domain/InsightTecnico';
 
 export class LogEventHandler {
   constructor(
@@ -68,18 +67,28 @@ export class LogEventHandler {
       // 4. Criar insight técnico no Confluence
       const technicalInsight: TechnicalInsight = {
         title: `Erro em ${logEvent.servico}: ${logEvent.erro.tipo}`,
+        description: `Erro ocorrido no serviço ${logEvent.servico}: ${logEvent.erro.mensagem}`,
         service: logEvent.servico,
         error: {
           type: logEvent.erro.tipo,
           message: logEvent.erro.mensagem,
-          stacktrace: logEvent.erro.stacktrace,
+          stackTrace: logEvent.erro.stacktrace,
         },
         code: codeContext,
         analysis: analiseIA,
+        recommendations: analiseIA.resultado.sugestoes,
         occurrenceDate: new Date().toISOString(),
         status: 'pending',
         solution: analiseIA.resultado.sugestoes.join('\n'),
-        preventiveMeasures: analiseIA.resultado.tags
+        preventiveMeasures: analiseIA.resultado.tags,
+        metadata: {
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          author: 'Sistema',
+          status: 'draft',
+          tags: analiseIA.resultado.tags,
+          references: []
+        }
       };
       await this.documentationService.createInsight(technicalInsight);
     } catch (error) {
