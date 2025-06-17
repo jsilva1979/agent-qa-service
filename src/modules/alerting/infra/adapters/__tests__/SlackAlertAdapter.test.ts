@@ -1,11 +1,12 @@
 import { SlackAlertAdapter } from '../SlackAlertAdapter';
 import { AnaliseIA } from '../../../../ai-prompting/domain/entities/AnaliseIA';
+import { Alert } from '../../../domain/ports/IAlertService';
 
 describe('SlackAlertAdapter', () => {
   let adapter: SlackAlertAdapter;
   const mockConfig = {
-    webhookUrl: 'https://hooks.slack.com/services/test',
-    canal: '#test-channel',
+    token: 'test-token',
+    channel: '#test-channel',
     logging: {
       level: 'info',
       file: {
@@ -23,64 +24,67 @@ describe('SlackAlertAdapter', () => {
     jest.clearAllMocks();
   });
 
-  describe('enviarAlerta', () => {
-    it('deve enviar um alerta com sucesso', async () => {
+  describe('sendAlert', () => {
+    it('should send an alert successfully', async () => {
       const mockResponse = { ts: '1234567890.123456' };
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
 
-      const alerta = {
-        tipo: 'info' as const,
-        titulo: 'Teste',
-        mensagem: 'Mensagem de teste',
-        detalhes: {},
+      const alert: Omit<Alert, 'id' | 'metadata'> = {
+        type: 'info',
+        title: 'Test',
+        message: 'Test message',
+        timestamp: new Date(),
+        details: {},
       };
 
-      const id = await adapter.enviarAlerta(alerta);
+      const id = await adapter.sendAlert(alert);
       expect(id).toBe(mockResponse.ts);
       expect(global.fetch).toHaveBeenCalledWith(
-        mockConfig.webhookUrl,
+        'https://slack.com/api/chat.postMessage',
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: expect.stringContaining('"channel":"#test-channel"')
         })
       );
     });
 
-    it('deve lançar erro quando a API falhar', async () => {
+    it('should throw an error when API fails', async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: 'Bad Request',
       });
 
-      const alerta = {
-        tipo: 'info' as const,
-        titulo: 'Teste',
-        mensagem: 'Mensagem de teste',
-        detalhes: {},
+      const alert: Omit<Alert, 'id' | 'metadata'> = {
+        type: 'info',
+        title: 'Test',
+        message: 'Test message',
+        timestamp: new Date(),
+        details: {},
       };
 
-      await expect(adapter.enviarAlerta(alerta)).rejects.toThrow('Erro na API do Slack: Bad Request');
+      await expect(adapter.sendAlert(alert)).rejects.toThrow('Error in Slack API: Bad Request');
     });
   });
 
-  describe('enviarAlertaErro', () => {
-    it('deve enviar um alerta de erro com sucesso', async () => {
+  describe('sendErrorAlert', () => {
+    it('should send an error alert successfully', async () => {
       const mockResponse = { ts: '1234567890.123456' };
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
 
-      const erro = {
-        tipo: 'TypeError',
-        mensagem: 'Cannot read property of undefined',
+      const errorDetails: Alert['details']['error'] = {
+        type: 'TypeError',
+        message: 'Cannot read property of undefined',
         stackTrace: 'at Object.process (test.js:10:5)',
       };
 
-      const analise: AnaliseIA = {
+      const analysis: AnaliseIA = {
         id: '1',
         timestamp: new Date(),
         erro: {
@@ -89,8 +93,8 @@ describe('SlackAlertAdapter', () => {
           stackTrace: 'at Object.process (test.js:10:5)',
         },
         resultado: {
-          causaRaiz: 'Acesso a propriedade de objeto undefined',
-          sugestoes: ['Verificar se o objeto existe antes de acessar suas propriedades'],
+          causaRaiz: 'Access to undefined object property',
+          sugestoes: ['Check if the object exists before accessing its properties'],
           nivelConfianca: 0.95,
           categoria: 'runtime',
           tags: ['undefined', 'property-access'],
@@ -104,12 +108,12 @@ describe('SlackAlertAdapter', () => {
         },
       };
 
-      const id = await adapter.enviarAlertaErro(erro, analise);
+      const id = await adapter.sendErrorAlert(errorDetails, analysis);
       expect(id).toBe(mockResponse.ts);
     });
 
-    it('deve lançar erro quando o erro for undefined', async () => {
-      const analise: AnaliseIA = {
+    it('should throw an error when error is undefined', async () => {
+      const analysis: AnaliseIA = {
         id: '1',
         timestamp: new Date(),
         erro: {
@@ -118,8 +122,8 @@ describe('SlackAlertAdapter', () => {
           stackTrace: 'at Object.process (test.js:10:5)',
         },
         resultado: {
-          causaRaiz: 'Acesso a propriedade de objeto undefined',
-          sugestoes: ['Verificar se o objeto existe antes de acessar suas propriedades'],
+          causaRaiz: 'Access to undefined object property',
+          sugestoes: ['Check if the object exists before accessing its properties'],
           nivelConfianca: 0.95,
           categoria: 'runtime',
           tags: ['undefined', 'property-access'],
@@ -133,53 +137,53 @@ describe('SlackAlertAdapter', () => {
         },
       };
 
-      await expect(adapter.enviarAlertaErro(undefined as any, analise)).rejects.toThrow('Erro não pode ser undefined');
+      await expect(adapter.sendErrorAlert(undefined as any, analysis)).rejects.toThrow('Error details not provided');
     });
   });
 
-  describe('enviarAlertaMetricas', () => {
-    it('deve enviar um alerta de métricas com sucesso', async () => {
+  describe('sendMetricsAlert', () => {
+    it('should send a metrics alert successfully', async () => {
       const mockResponse = { ts: '1234567890.123456' };
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
 
-      const metricas = {
+      const metrics: Alert['details']['metrics'] = {
         cpu: 75,
-        memoria: 80,
-        fila: 10,
+        memory: 80,
+        latency: 10,
       };
 
-      const id = await adapter.enviarAlertaMetricas(metricas);
+      const id = await adapter.sendMetricsAlert(metrics);
       expect(id).toBe(mockResponse.ts);
     });
   });
 
-  describe('verificarDisponibilidade', () => {
-    it('deve retornar true quando o serviço estiver disponível', async () => {
+  describe('checkAvailability', () => {
+    it('should return true when service is available', async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
       });
 
-      const disponivel = await adapter.verificarDisponibilidade();
-      expect(disponivel).toBe(true);
+      const available = await adapter.checkAvailability();
+      expect(available).toBe(true);
     });
 
-    it('deve retornar false quando o serviço estiver indisponível', async () => {
+    it('should return false when service is unavailable', async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
       });
 
-      const disponivel = await adapter.verificarDisponibilidade();
-      expect(disponivel).toBe(false);
+      const available = await adapter.checkAvailability();
+      expect(available).toBe(false);
     });
 
-    it('deve retornar false quando ocorrer um erro', async () => {
+    it('should return false when an error occurs', async () => {
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
-      const disponivel = await adapter.verificarDisponibilidade();
-      expect(disponivel).toBe(false);
+      const available = await adapter.checkAvailability();
+      expect(available).toBe(false);
     });
   });
 }); 

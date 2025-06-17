@@ -1,5 +1,5 @@
-import { IDocumentationService, Documentacao } from '../../domain/ports/IDocumentationService';
-import { AnaliseIA } from '../../../../modules/ai-prompting/domain/entities/AnaliseIA';
+import { IDocumentationService, Documentation, TechnicalInsight } from '../../domain/ports/IDocumentationService';
+import { AnaliseIA } from '../../../ai-prompting/domain/entities/AnaliseIA';
 import winston from 'winston';
 
 interface ConfluenceConfig {
@@ -36,41 +36,41 @@ export class ConfluenceDocumentationAdapter implements IDocumentationService {
     });
   }
 
-  private gerarTitulo(analise: AnaliseIA): string {
-    return `[${analise.erro.tipo}] ${analise.erro.mensagem}`;
+  private generateTitle(analysis: AnaliseIA): string {
+    return `[${analysis.erro.tipo}] ${analysis.erro.mensagem}`;
   }
 
-  private gerarConteudo(analise: AnaliseIA): string {
+  private generateContent(analysis: AnaliseIA): string {
     return `
-h2. Detalhes do Erro
+h2. Error Details
 
-*Tipo:* ${analise.erro.tipo}
-*Mensagem:* ${analise.erro.mensagem}
-*Stack Trace:* {code}${analise.erro.stackTrace}{code}
+*Type:* ${analysis.erro.tipo}
+*Message:* ${analysis.erro.mensagem}
+*Stack Trace:* {code}${analysis.erro.stackTrace}{code}
 
-h2. Análise
+h2. Analysis
 
-*Causa Raiz:* ${analise.resultado.causaRaiz}
-*Nível de Confiança:* ${analise.resultado.nivelConfianca * 100}%
+*Root Cause:* ${analysis.resultado.causaRaiz}
+*Confidence Level:* ${analysis.resultado.nivelConfianca * 100}%
 
-h2. Sugestões de Correção
+h2. Suggested Fixes
 
-${analise.resultado.sugestoes.map(sugestao => `* ${sugestao}`).join('\n')}
+${analysis.resultado.sugestoes.map(suggestion => `* ${suggestion}`).join('\n')}
 
-h2. Referências
+h2. References
 
-${analise.resultado.referencias.map(ref => `* [${ref}|${ref}]`).join('\n')}
+${analysis.resultado.referencias.map(ref => `* [${ref}|${ref}]`).join('\n')}
 
-h2. Metadados
+h2. Metadata
 
-*Modelo:* ${analise.metadados.modelo}
-*Versão:* ${analise.metadados.versao}
-*Tempo de Processamento:* ${analise.metadados.tempoProcessamento}ms
-*Tokens Utilizados:* ${analise.metadados.tokensUtilizados}
+*Model:* ${analysis.metadados.modelo}
+*Version:* ${analysis.metadados.versao}
+*Processing Time:* ${analysis.metadados.tempoProcessamento}ms
+*Tokens Used:* ${analysis.metadados.tokensUtilizados}
 `;
   }
 
-  private async fazerRequisicao(endpoint: string, method: string, body?: any): Promise<any> {
+  private async makeRequest(endpoint: string, method: string, body?: any): Promise<any> {
     const url = `${this.config.baseUrl}/wiki/api/v2/${endpoint}`;
     const auth = Buffer.from(`${this.config.username}:${this.config.apiToken}`).toString('base64');
 
@@ -86,216 +86,243 @@ h2. Metadados
       });
 
       if (!response.ok) {
-        throw new Error(`Erro na API do Confluence: ${response.statusText}`);
+        throw new Error(`Confluence API Error: ${response.statusText}`);
       }
 
       return response.json();
     } catch (error) {
-      this.logger.error('Erro na requisição ao Confluence:', error);
+      this.logger.error('Error making request to Confluence:', error);
       throw error;
     }
   }
 
-  async criarDocumento(analise: AnaliseIA): Promise<Documentacao> {
+  async createDocument(analysis: AnaliseIA): Promise<Documentation> {
     try {
-      const titulo = this.gerarTitulo(analise);
-      const conteudo = this.gerarConteudo(analise);
+      const title = this.generateTitle(analysis);
+      const content = this.generateContent(analysis);
 
-      const response = await this.fazerRequisicao('pages', 'POST', {
+      const response = await this.makeRequest('pages', 'POST', {
         spaceId: this.config.spaceKey,
         status: 'current',
-        title: titulo,
+        title: title,
         body: {
           storage: {
-            value: conteudo,
+            value: content,
             representation: 'storage',
           },
         },
         parentId: this.config.parentPageId,
       });
 
-      const documento: Documentacao = {
+      const document: Documentation = {
         id: response.id,
-        titulo: response.title,
-        conteudo: conteudo,
-        tags: analise.resultado.tags,
-        metadados: {
-          autor: response.version.by.displayName,
-          dataCriacao: new Date(response.createdAt),
-          dataAtualizacao: new Date(response.version.when),
-          versao: response.version.number.toString(),
-          status: 'publicado',
+        title: response.title,
+        content: content,
+        type: 'error',
+        metadata: {
+          createdAt: new Date(response.createdAt),
+          updatedAt: new Date(response.version.when),
+          author: response.version.by.displayName,
+          status: 'published',
+          tags: analysis.resultado.tags,
+          references: [],
+          version: response.version.number.toString(),
         },
       };
 
-      this.logger.info('Documento criado com sucesso:', { id: documento.id });
-      return documento;
+      this.logger.info('Document created successfully:', { id: document.id });
+      return document;
     } catch (error) {
-      this.logger.error('Erro ao criar documento:', error);
+      this.logger.error('Error creating document:', error);
       throw error;
     }
   }
 
-  async atualizarDocumento(id: string, analise: AnaliseIA): Promise<Documentacao> {
+  async createInsight(insight: TechnicalInsight): Promise<string> {
     try {
-      const documento = await this.buscarDocumento(id);
-      if (!documento) {
-        throw new Error(`Documento não encontrado: ${id}`);
-      }
+      const title = insight.title;
+      const content = `
+h2. Technical Insight
 
-      const titulo = this.gerarTitulo(analise);
-      const conteudo = this.gerarConteudo(analise);
+*Title:* ${insight.title}
+*Service:* ${insight.service}
+*Error Type:* ${insight.error.type}
+*Error Message:* ${insight.error.message}
+*Analysis Root Cause:* ${insight.analysis.resultado.causaRaiz}
+*Suggested Fixes:* ${insight.analysis.resultado.sugestoes.map(s => `* ${s}`).join('\n')}
+*Occurrence Date:* ${insight.occurrenceDate}
+*Status:* ${insight.status}
+*Solution:* ${insight.solution || 'N/A'}
+*Preventive Measures:* ${insight.preventiveMeasures?.join('\n') || 'N/A'}
 
-      const response = await this.fazerRequisicao(`pages/${id}`, 'PUT', {
-        version: {
-          number: parseInt(documento.metadados.versao) + 1,
-        },
-        title: titulo,
+
+      `;
+
+      const response = await this.makeRequest('pages', 'POST', {
+        spaceId: this.config.spaceKey,
+        status: 'current',
+        title: title,
         body: {
           storage: {
-            value: conteudo,
+            value: content,
+            representation: 'storage',
+          },
+        },
+        parentId: this.config.parentPageId,
+      });
+
+      this.logger.info('Insight created successfully:', { id: response.id });
+      return response.id;
+    } catch (error) {
+      this.logger.error('Error creating insight:', error);
+      throw error;
+    }
+  }
+
+  async updateDocument(id: string, analysis: AnaliseIA): Promise<Documentation> {
+    try {
+      const document = await this.findDocument(id);
+      if (!document) {
+        throw new Error(`Document not found: ${id}`);
+      }
+
+      const title = this.generateTitle(analysis);
+      const content = this.generateContent(analysis);
+
+      const response = await this.makeRequest(`pages/${id}`, 'PUT', {
+        version: {
+          number: parseInt(document.metadata.version as string) + 1,
+        },
+        title: title,
+        body: {
+          storage: {
+            value: content,
             representation: 'storage',
           },
         },
       });
 
-      const documentoAtualizado: Documentacao = {
-        ...documento,
-        titulo: response.title,
-        conteudo: conteudo,
-        tags: analise.resultado.tags,
-        metadados: {
-          ...documento.metadados,
-          dataAtualizacao: new Date(response.version.when),
-          versao: response.version.number.toString(),
+      const updatedDocument: Documentation = {
+        ...document,
+        title: response.title,
+        content: content,
+        metadata: {
+          ...document.metadata,
+          updatedAt: new Date(response.version.when),
+          version: response.version.number.toString(),
         },
       };
 
-      this.logger.info('Documento atualizado com sucesso:', { id });
-      return documentoAtualizado;
+      this.logger.info('Document updated successfully:', { id });
+      return updatedDocument;
     } catch (error) {
-      this.logger.error('Erro ao atualizar documento:', error);
+      this.logger.error('Error updating document:', error);
       throw error;
     }
   }
 
-  async buscarDocumento(id: string): Promise<Documentacao | null> {
+  async findDocument(id: string): Promise<Documentation | null> {
     try {
-      const response = await this.fazerRequisicao(`pages/${id}`, 'GET');
+      const response = await this.makeRequest(`pages/${id}`, 'GET');
       
-      const documento: Documentacao = {
+      const document: Documentation = {
         id: response.id,
-        titulo: response.title,
-        conteudo: response.body.storage.value,
-        tags: [], // TODO: Implementar extração de tags do conteúdo
-        metadados: {
-          autor: response.version.by.displayName,
-          dataCriacao: new Date(response.createdAt),
-          dataAtualizacao: new Date(response.version.when),
-          versao: response.version.number.toString(),
-          status: 'publicado',
+        title: response.title,
+        content: response.body.storage.value,
+        type: 'error',
+        metadata: {
+          createdAt: new Date(response.createdAt),
+          updatedAt: new Date(response.version.when),
+          author: response.version.by.displayName,
+          status: 'published',
+          tags: [],
+          references: [],
+          version: response.version.number.toString(),
         },
       };
 
-      return documento;
-    } catch (error: any) {
-      if (error.message?.includes('404')) {
+      return document;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Not Found')) {
         return null;
       }
-      this.logger.error('Erro ao buscar documento:', error);
+      this.logger.error('Error finding document:', error);
       throw error;
     }
   }
 
-  async listarDocumentos(filtros?: {
+  async listDocuments(filters?: {
     tags?: string[];
-    status?: Documentacao['metadados']['status'];
-    dataInicio?: Date;
-    dataFim?: Date;
-  }): Promise<Documentacao[]> {
+    status?: Documentation['metadata']['status'];
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<Documentation[]> {
     try {
-      const queryParams = new URLSearchParams({
-        spaceId: this.config.spaceKey,
-        parentId: this.config.parentPageId,
-        limit: '50',
-      });
+      let endpoint = 'pages';
+      const params = new URLSearchParams();
 
-      const response = await this.fazerRequisicao(`pages?${queryParams}`, 'GET');
-      
-      const documentos = response.results.map((page: any) => ({
-        id: page.id,
-        titulo: page.title,
-        conteudo: page.body.storage.value,
-        tags: [], // TODO: Implementar extração de tags do conteúdo
-        metadados: {
-          autor: page.version.by.displayName,
-          dataCriacao: new Date(page.createdAt),
-          dataAtualizacao: new Date(page.version.when),
-          versao: page.version.number.toString(),
-          status: 'publicado',
-        },
-      }));
-
-      // Aplicar filtros
-      return documentos.filter((doc: Documentacao) => {
-        if (filtros?.tags && !filtros.tags.every(tag => doc.tags.includes(tag))) {
-          return false;
-        }
-        if (filtros?.status && doc.metadados.status !== filtros.status) {
-          return false;
-        }
-        if (filtros?.dataInicio && doc.metadados.dataCriacao < filtros.dataInicio) {
-          return false;
-        }
-        if (filtros?.dataFim && doc.metadados.dataCriacao > filtros.dataFim) {
-          return false;
-        }
-        return true;
-      });
-    } catch (error) {
-      this.logger.error('Erro ao listar documentos:', error);
-      throw error;
-    }
-  }
-
-  async arquivarDocumento(id: string): Promise<Documentacao> {
-    try {
-      const documento = await this.buscarDocumento(id);
-      if (!documento) {
-        throw new Error(`Documento não encontrado: ${id}`);
+      if (filters?.status) {
+        params.append('status', filters.status);
       }
 
-      await this.fazerRequisicao(`pages/${id}`, 'PUT', {
-        version: {
-          number: parseInt(documento.metadados.versao) + 1,
-        },
-        status: 'archived',
-      });
+      if (params.toString()) {
+        endpoint += `?${params.toString()}`;
+      }
 
-      const documentoArquivado: Documentacao = {
-        ...documento,
-        metadados: {
-          ...documento.metadados,
-          status: 'arquivado',
-          dataAtualizacao: new Date(),
+      const response = await this.makeRequest(endpoint, 'GET');
+      return response.results.map((page: any) => ({
+        id: page.id,
+        title: page.title,
+        content: page.body.storage.value,
+        type: 'error',
+        metadata: {
+          createdAt: new Date(page.createdAt),
+          updatedAt: new Date(page.version.when),
+          author: page.version.by.displayName,
+          status: 'published',
+          tags: [],
+          references: [],
+          version: page.version.number.toString(),
         },
-      };
-
-      this.logger.info('Documento arquivado com sucesso:', { id });
-      return documentoArquivado;
+      }));
     } catch (error) {
-      this.logger.error('Erro ao arquivar documento:', error);
+      this.logger.error('Error listing documents:', error);
       throw error;
     }
   }
 
-  async verificarDisponibilidade(): Promise<boolean> {
+  async archiveDocument(id: string): Promise<Documentation> {
     try {
-      await this.fazerRequisicao('spaces', 'GET');
+      const document = await this.findDocument(id);
+      if (!document) {
+        throw new Error(`Document not found: ${id}`);
+      }
+
+      await this.makeRequest(`pages/${id}`, 'DELETE');
+
+      const archivedDocument: Documentation = {
+        ...document,
+        metadata: {
+          ...document.metadata,
+          status: 'archived',
+          updatedAt: new Date(),
+        },
+      };
+      this.logger.info('Document archived successfully:', { id });
+      return archivedDocument;
+    } catch (error) {
+      this.logger.error('Error archiving document:', error);
+      throw error;
+    }
+  }
+
+  async checkAvailability(): Promise<boolean> {
+    try {
+      await this.makeRequest('pages?limit=1', 'GET');
       return true;
     } catch (error) {
-      this.logger.error('Erro ao verificar disponibilidade do Confluence:', error);
+      this.logger.error('Error checking Confluence availability:', error);
       return false;
     }
   }
-} 
+}

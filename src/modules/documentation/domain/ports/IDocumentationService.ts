@@ -1,4 +1,5 @@
 import { AnaliseIA } from '../../../ai-prompting/domain/entities/AnaliseIA';
+import { CodeContext } from '../../../github-access/domain/CodeContext';
 
 export interface Documentation {
   id: string;
@@ -12,15 +13,28 @@ export interface Documentation {
     status: 'draft' | 'published' | 'archived';
     tags: string[];
     references: string[];
+    version?: string;
   };
 }
 
 export interface TechnicalInsight {
-  id: string;
+  id?: string;
   title: string;
   description: string;
+  service: string;
+  error: {
+    type: string;
+    message: string;
+    stackTrace?: string;
+    context?: Record<string, any>;
+  };
+  code?: CodeContext;
   analysis: AnaliseIA;
   recommendations: string[];
+  occurrenceDate: string;
+  status: 'resolved' | 'in_progress' | 'pending';
+  solution?: string;
+  preventiveMeasures?: string[];
   metadata: {
     createdAt: Date;
     updatedAt: Date;
