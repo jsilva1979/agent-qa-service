@@ -1,6 +1,6 @@
 import { createLogger, format, transports } from 'winston';
-import { SlackAlertAdapter } from './infra/adapters/SlackAlertAdapter';
-import { EnviarAlertaUseCase } from './application/use-cases/EnviarAlertaUseCase';
+import { SlackAlertService } from './infrastructure/SlackAlertService';
+import { SendAlertUseCase } from './application/use-cases/EnviarAlertaUseCase';
 import { config } from './config/config';
 
 // Configuração do logger
@@ -17,22 +17,35 @@ const logger = createLogger({
   ]
 });
 
+if (!config.slack.accessToken) {
+  throw new Error('SLACK_ACCESS_TOKEN não configurado');
+}
+
+if (!config.slack.refreshToken) {
+  throw new Error('SLACK_REFRESH_TOKEN não configurado');
+}
+
+if (!config.jira || !config.jira.url) {
+  throw new Error('JIRA_URL não configurado');
+}
+
 // Inicialização do serviço de alertas
-const alertService = new SlackAlertAdapter({
-  webhookUrl: config.slack.webhookUrl,
-  canal: config.slack.canal,
-  logging: {
-    level: config.slack.logging.level,
-    file: {
-      path: config.slack.logging.file.path,
-    },
+const alertService = new SlackAlertService({
+  accessToken: config.slack.accessToken,
+  refreshToken: config.slack.refreshToken,
+  channel: config.slack.channel,
+  logging: config.slack.logging,
+  jira: {
+    url: config.jira.url,
   },
 });
 
 // Inicialização do caso de uso
-const enviarAlertaUseCase = new EnviarAlertaUseCase(
+const sendAlertUseCase = new SendAlertUseCase(
   alertService,
   logger
 );
 
-export { enviarAlertaUseCase, alertService }; 
+export { sendAlertUseCase, alertService };
+export * from './domain/ports/IAlertService';
+export { Alert } from './domain/entities/Alert'; 

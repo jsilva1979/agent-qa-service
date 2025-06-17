@@ -16,11 +16,19 @@ interface GeminiResponse {
   }>;
 }
 
+interface RetryConfig {
+  maxRetries: number;
+  initialDelay: number;
+  maxDelay: number;
+  backoffFactor: number;
+}
+
 export class GeminiAIService implements IAIService {
   private genAI: GoogleGenerativeAI;
   private model: any;
   private logger: winston.Logger;
   private modelName: string;
+  private retryConfig: RetryConfig;
 
   constructor(
     private readonly aiConfig: {
@@ -32,12 +40,19 @@ export class GeminiAIService implements IAIService {
           path: string;
         };
       };
+      retry?: RetryConfig;
     },
     private readonly cache?: ICache
   ) {
     this.genAI = new GoogleGenerativeAI(aiConfig.apiKey);
     this.model = this.genAI.getGenerativeModel({ model: aiConfig.modelName });
     this.modelName = aiConfig.modelName;
+    this.retryConfig = aiConfig.retry || {
+      maxRetries: 3,
+      initialDelay: 1000,
+      maxDelay: 10000,
+      backoffFactor: 2,
+    };
     this.logger = winston.createLogger({
       level: aiConfig.logging.level,
       format: winston.format.combine(
@@ -54,6 +69,79 @@ export class GeminiAIService implements IAIService {
     });
   }
 
+  private async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    operationName: string
+  ): Promise<T> {
+    let lastError: Error | null = null;
+    let delay = this.retryConfig.initialDelay;
+
+    for (let attempt = 1; attempt <= this.retryConfig.maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error: unknown) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        this.logger.warn(
+          `Tentativa ${attempt} de ${this.retryConfig.maxRetries} falhou para ${operationName}: ${lastError.message}`
+        );
+
+        if (attempt === this.retryConfig.maxRetries) {
+          break;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay = Math.min(
+          delay * this.retryConfig.backoffFactor,
+          this.retryConfig.maxDelay
+        );
+      }
+    }
+
+    throw new Error(
+      `Falha após ${this.retryConfig.maxRetries} tentativas para ${operationName}: ${lastError?.message}`
+    );
+  }
+
+  private async callGeminiAPI(prompt: string): Promise<string> {
+    return this.executeWithRetry(
+      async () => {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.aiConfig.apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: prompt,
+                    },
+                  ],
+                },
+              ],
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            `Erro na API do Gemini: ${response.statusText}. Detalhes: ${JSON.stringify(
+              errorData
+            )}`
+          );
+        }
+
+        const result = (await response.json()) as GeminiResponse;
+        return result.candidates[0].content.parts[0].text;
+      },
+      'callGeminiAPI'
+    );
+  }
+
   async analyzeError(data: AnalysisData): Promise<AnaliseIA> {
     try {
       // Tenta obter do cache primeiro
@@ -67,34 +155,7 @@ export class GeminiAIService implements IAIService {
 
       const inicioProcessamento = Date.now();
       const prompt = this.prepararPrompt(data);
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${config.ai.apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt,
-                  },
-                ],
-              },
-            ],
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Erro na API do Gemini: ${response.statusText}`);
-      }
-
-      const result = (await response.json()) as GeminiResponse;
-      const texto = result.candidates[0].content.parts[0].text;
+      const texto = await this.callGeminiAPI(prompt);
 
       const analise: AnaliseIA = {
         id: crypto.randomUUID(),
@@ -142,34 +203,7 @@ export class GeminiAIService implements IAIService {
     try {
       const inicioProcessamento = Date.now();
       const prompt = this.prepararPromptCodigo(sourceCode, file, line, error);
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${config.ai.apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt,
-                  },
-                ],
-              },
-            ],
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Erro na API do Gemini: ${response.statusText}`);
-      }
-
-      const result = (await response.json()) as GeminiResponse;
-      const texto = result.candidates[0].content.parts[0].text;
+      const texto = await this.callGeminiAPI(prompt);
 
       return {
         id: crypto.randomUUID(),
@@ -252,26 +286,39 @@ export class GeminiAIService implements IAIService {
   }
 
   private prepararPrompt(data: AnalysisData): string {
-    return `
-      Você é um engenheiro de QA autônomo.
+    return `Você é um engenheiro de QA autônomo especializado em análise de erros e debugging.
 
-      Abaixo está o trecho de código onde ocorreu o erro, extraído automaticamente após a análise de logs.
+Contexto do erro:
+- Tipo: ${data.error.type}
+- Mensagem: ${data.error.message}
+${data.error.stackTrace ? `- Stack Trace:\n${data.error.stackTrace}` : ''}
+${data.error.context ? `- Contexto adicional:\n${JSON.stringify(data.error.context, null, 2)}` : ''}
 
-      1. O que pode ter causado o erro nesta linha?
-      2. Há alguma verificação ausente? (null-check, try-catch...)
-      3. Dê uma sugestão de correção com explicação.
+${data.logs ? `Logs relevantes:\n${data.logs.join('\n')}` : ''}
 
-      Tipo do erro: ${data.error.type}
-      Mensagem: ${data.error.message}
-      ${data.error.stackTrace ? `Stack trace: ${data.error.stackTrace}` : ''}
-      
-      Contexto adicional:
-      ${JSON.stringify(data.context || {}, null, 2)}
-      
-      ${data.logs ? `Logs relevantes:\n${data.logs.join('\n')}` : ''}
-      
-      ${data.metrics ? `Métricas:\n${JSON.stringify(data.metrics, null, 2)}` : ''}
-    `;
+${data.metrics ? `Métricas do sistema:\n${JSON.stringify(data.metrics, null, 2)}` : ''}
+
+Por favor, forneça uma análise detalhada seguindo este formato:
+
+1. CAUSA RAIZ:
+[Identifique a causa fundamental do erro]
+
+2. SUGESTÕES DE CORREÇÃO:
+[Liste as sugestões de correção em ordem de prioridade]
+
+3. NÍVEL DE CONFIANÇA:
+[Indique um número entre 0 e 1 representando sua confiança na análise]
+
+4. CATEGORIA:
+[Classifique o erro em uma das seguintes categorias: Runtime, Logic, Resource, Network, Security, Data, Configuration, ou Other]
+
+5. TAGS:
+[Liste tags relevantes separadas por vírgula]
+
+6. REFERÊNCIAS:
+[Liste referências relevantes (documentação, padrões, etc.)]
+
+Por favor, seja específico e técnico em sua análise.`;
   }
 
   private prepararPromptCodigo(
@@ -280,52 +327,105 @@ export class GeminiAIService implements IAIService {
     linha: number,
     erro: string
   ): string {
-    return `
-      Você é um engenheiro de QA autônomo.
+    return `Você é um engenheiro de QA autônomo especializado em análise de código e debugging.
 
-      Abaixo está o trecho de código onde ocorreu o erro:
+Arquivo: ${arquivo}
+Linha: ${linha}
+Erro: ${erro}
 
-      Arquivo: ${arquivo}
-      Linha: ${linha}
-      Erro: ${erro}
+Código relevante:
+\`\`\`
+${codigoFonte}
+\`\`\`
 
-      Código:
-      ${codigoFonte}
+Por favor, forneça uma análise detalhada seguindo este formato:
 
-      Por favor, analise o código e forneça:
-      1. A causa raiz do problema
-      2. Sugestões de correção
-      3. Categoria do problema
-      4. Tags relevantes
-      5. Referências úteis (documentação, exemplos, etc)
-    `;
+1. CAUSA RAIZ:
+[Identifique a causa fundamental do erro no código]
+
+2. SUGESTÕES DE CORREÇÃO:
+[Liste as sugestões de correção em ordem de prioridade, incluindo exemplos de código quando apropriado]
+
+3. NÍVEL DE CONFIANÇA:
+[Indique um número entre 0 e 1 representando sua confiança na análise]
+
+4. CATEGORIA:
+[Classifique o erro em uma das seguintes categorias: Runtime, Logic, Resource, Network, Security, Data, Configuration, ou Other]
+
+5. TAGS:
+[Liste tags relevantes separadas por vírgula]
+
+6. REFERÊNCIAS:
+[Liste referências relevantes (documentação, padrões, etc.)]
+
+Por favor, seja específico e técnico em sua análise.`;
   }
 
   private extrairCausaRaiz(texto: string): string {
-    return texto.split('\n')[0];
+    const match = texto.match(/1\. CAUSA RAIZ:\s*([\s\S]*?)(?=2\.|$)/i);
+    return match ? match[1].trim() : 'Causa raiz não identificada';
   }
 
   private extrairSugestoes(texto: string): string[] {
-    return texto.split('\n').filter(line => line.startsWith('- '));
+    const match = texto.match(/2\. SUGESTÕES DE CORREÇÃO:\s*([\s\S]*?)(?=3\.|$)/i);
+    if (!match) return ['Sugestões não identificadas'];
+    
+    return match[1]
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('-') && !line.startsWith('*'))
+      .map(line => line.replace(/^\d+\.\s*/, ''));
   }
 
   private calcularNivelConfianca(texto: string): number {
-    return 0.8;
+    const match = texto.match(/3\. NÍVEL DE CONFIANÇA:\s*([\d.]+)/i);
+    if (!match) return 0.5;
+    
+    const nivel = parseFloat(match[1]);
+    return isNaN(nivel) ? 0.5 : Math.max(0, Math.min(1, nivel));
   }
 
   private extrairCategoria(texto: string): string {
-    return 'Erro de Sistema';
+    const match = texto.match(/4\. CATEGORIA:\s*([\s\S]*?)(?=5\.|$)/i);
+    if (!match) return 'Other';
+    
+    const categoria = match[1].trim();
+    const categoriasValidas = [
+      'Runtime',
+      'Logic',
+      'Resource',
+      'Network',
+      'Security',
+      'Data',
+      'Configuration',
+      'Other'
+    ];
+    
+    return categoriasValidas.includes(categoria) ? categoria : 'Other';
   }
 
   private extrairTags(texto: string): string[] {
-    return ['erro', 'sistema'];
+    const match = texto.match(/5\. TAGS:\s*([\s\S]*?)(?=6\.|$)/i);
+    if (!match) return [];
+    
+    return match[1]
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag);
   }
 
   private extrairReferencias(texto: string): string[] {
-    return [];
+    const match = texto.match(/6\. REFERÊNCIAS:\s*([\s\S]*?)(?=$)/i);
+    if (!match) return [];
+    
+    return match[1]
+      .split('\n')
+      .map(ref => ref.trim())
+      .filter(ref => ref && !ref.startsWith('-') && !ref.startsWith('*'));
   }
 
   private contarTokens(texto: string): number {
-    return texto.split(/\s+/).length;
+    // Implementação simplificada - em produção, usar uma biblioteca específica
+    return Math.ceil(texto.length / 4);
   }
 } 

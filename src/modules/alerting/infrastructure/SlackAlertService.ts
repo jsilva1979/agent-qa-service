@@ -1,28 +1,57 @@
-import axios from 'axios';
+import { WebClient } from '@slack/web-api';
 import { IAlertService, Alert } from '../domain/ports/IAlertService';
 import { AnaliseIA } from '../../ai-prompting/domain/entities/AnaliseIA';
+import { SlackAuthService } from '../../../shared/infrastructure/slackAuth';
 import winston from 'winston';
 import crypto from 'crypto';
 
 export class SlackAlertService implements IAlertService {
-  private readonly webhookUrl: string;
+  private readonly authService: SlackAuthService;
   private readonly logger: winston.Logger;
+  private readonly channel: string;
+  private readonly jiraUrl: string;
 
   constructor(
     private readonly config: {
-      webhookUrl: string;
+      accessToken: string;
+      refreshToken: string;
+      channel: string;
       logging: {
         level: string;
         file: {
           path: string;
         };
       };
+      jira: {
+        url: string;
+      };
     }
   ) {
-    this.webhookUrl = config.webhookUrl;
-    if (!this.webhookUrl) {
-      throw new Error('SLACK_WEBHOOK_URL não configurado');
+    if (!this.config.accessToken) {
+      throw new Error('SLACK_ACCESS_TOKEN não configurado');
     }
+    if (!this.config.refreshToken) {
+      throw new Error('SLACK_REFRESH_TOKEN não configurado');
+    }
+    if (!this.config.channel) {
+      throw new Error('SLACK_CHANNEL não configurado');
+    }
+    if (!this.config.jira || !this.config.jira.url) {
+      throw new Error('JIRA_URL não configurado');
+    }
+
+    this.authService = new SlackAuthService(
+      this.config.accessToken,
+      this.config.refreshToken,
+      {
+        level: this.config.logging.level,
+        file: {
+          path: this.config.logging.file.path
+        }
+      }
+    );
+    this.channel = this.config.channel;
+    this.jiraUrl = this.config.jira.url;
 
     this.logger = winston.createLogger({
       level: config.logging.level,
@@ -54,7 +83,11 @@ export class SlackAlertService implements IAlertService {
       };
 
       const message = this.formatAlertMessage(fullAlert);
-      await axios.post(this.webhookUrl, message);
+      const client = await this.authService.getClient();
+      await client.chat.postMessage({
+        channel: this.channel,
+        ...message
+      });
 
       this.logger.info('Alerta enviado com sucesso', { id: alertId });
       return alertId;
@@ -88,7 +121,11 @@ export class SlackAlertService implements IAlertService {
       };
 
       const message = this.formatErrorAlertMessage(alert, analysis);
-      await axios.post(this.webhookUrl, message);
+      const client = await this.authService.getClient();
+      await client.chat.postMessage({
+        channel: this.channel,
+        ...message
+      });
 
       this.logger.info('Alerta de erro enviado com sucesso', { id: alertId });
       return alertId;
@@ -118,7 +155,11 @@ export class SlackAlertService implements IAlertService {
       };
 
       const message = this.formatMetricsAlertMessage(alert);
-      await axios.post(this.webhookUrl, message);
+      const client = await this.authService.getClient();
+      await client.chat.postMessage({
+        channel: this.channel,
+        ...message
+      });
 
       this.logger.info('Alerta de métricas enviado com sucesso', { id: alertId });
       return alertId;
@@ -130,7 +171,8 @@ export class SlackAlertService implements IAlertService {
 
   async checkAvailability(): Promise<boolean> {
     try {
-      await axios.get(this.webhookUrl);
+      const client = await this.authService.getClient();
+      await client.auth.test();
       return true;
     } catch (error) {
       this.logger.error('Erro ao verificar disponibilidade do Slack:', error);
@@ -140,6 +182,7 @@ export class SlackAlertService implements IAlertService {
 
   private formatAlertMessage(alert: Alert): any {
     return {
+      text: alert.message,
       blocks: [
         {
           type: 'header',
@@ -173,7 +216,10 @@ export class SlackAlertService implements IAlertService {
   }
 
   private formatErrorAlertMessage(alert: Alert, analysis: AnaliseIA): any {
+    const jiraCreateIssueUrl = `${this.jiraUrl}/secure/CreateIssue!default.jspa`;
+
     return {
+      text: alert.details.error?.message || 'Erro reportado',
       blocks: [
         {
           type: 'header',
@@ -228,6 +274,22 @@ export class SlackAlertService implements IAlertService {
             },
           ],
         },
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: {
+                type: 'plain_text',
+                text: 'Criar Issue no Jira',
+                emoji: true,
+              },
+              style: 'primary',
+              url: jiraCreateIssueUrl,
+              action_id: 'create_jira_issue',
+            },
+          ],
+        },
       ],
     };
   }
@@ -235,6 +297,7 @@ export class SlackAlertService implements IAlertService {
   private formatMetricsAlertMessage(alert: Alert): any {
     const metrics = alert.details.metrics;
     return {
+      text: `Métricas do Sistema: CPU ${metrics?.cpu?.toFixed(2)}%, Memória ${metrics?.memory?.toFixed(2)}%, Latência ${metrics?.latency?.toFixed(2)}ms`,
       blocks: [
         {
           type: 'header',

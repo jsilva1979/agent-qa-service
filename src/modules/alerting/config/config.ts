@@ -1,13 +1,25 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config();
+
 export const config = {
   slack: {
-    webhookUrl: process.env.SLACK_WEBHOOK_URL || '',
-    canal: process.env.SLACK_CHANNEL || '#alertas',
+    accessToken: process.env.SLACK_ACCESS_TOKEN,
+    refreshToken: process.env.SLACK_REFRESH_TOKEN,
+    channel: process.env.SLACK_CHANNEL || '#alerts',
     logging: {
       level: process.env.LOG_LEVEL || 'info',
       file: {
-        path: process.env.LOG_FILE_PATH || 'logs/alerting.log',
+        path: path.join(process.cwd(), 'logs', 'slack-alerts.log'),
       },
     },
+  },
+  jira: {
+    url: process.env.JIRA_URL,
+    email: process.env.JIRA_EMAIL,
+    apiToken: process.env.JIRA_API_TOKEN,
+    project: process.env.JIRA_PROJECT,
   },
   retry: {
     maxAttempts: 3,
