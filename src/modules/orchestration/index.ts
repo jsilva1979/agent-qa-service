@@ -28,8 +28,8 @@ const logAnalysisService = new LogAnalysisService(logger);
 const gitHubService = new GitHubService(logger);
 const aiService = new GeminiServiceAdapter(logger, process.env.GEMINI_API_KEY || '');
 const alertService = new SlackAlertAdapter({
-  webhookUrl: process.env.SLACK_WEBHOOK_URL || '',
-  canal: process.env.SLACK_CHANNEL || '#alerts',
+  token: process.env.SLACK_BOT_TOKEN || '',
+  channel: process.env.SLACK_CHANNEL || '#alerts',
   logging: {
     level: config.orchestrator.logging.level,
     file: {

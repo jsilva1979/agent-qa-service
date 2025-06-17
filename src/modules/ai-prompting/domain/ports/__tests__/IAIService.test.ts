@@ -1,13 +1,18 @@
-import { IAIService, DadosAnalise } from '../IAIService';
+import { IAIService, AnalysisData, CodeAnalysis } from '../IAIService';
 import { AnaliseIA } from '../../entities/AnaliseIA';
 
 // Classe mock para testar a interface
 class MockAIService implements IAIService {
-  async analisarErro(dados: DadosAnalise): Promise<AnaliseIA> {
+  async analyzeError(data: AnalysisData): Promise<AnaliseIA> {
     return {
       id: 'mock-id',
       timestamp: new Date(),
-      erro: dados.erro,
+      erro: {
+        tipo: data.error.type,
+        mensagem: data.error.message,
+        stackTrace: data.error.stackTrace,
+        contexto: data.error.context,
+      },
       resultado: {
         causaRaiz: 'Mock causa raiz',
         sugestoes: ['Mock sugestão'],
@@ -25,21 +30,50 @@ class MockAIService implements IAIService {
     };
   }
 
-  async verificarDisponibilidade(): Promise<boolean> {
+  async analyzeCode(
+    sourceCode: string,
+    file: string,
+    line: number,
+    error: string
+  ): Promise<CodeAnalysis> {
+    return {
+      id: 'mock-code-id',
+      timestamp: new Date(),
+      file: file,
+      line: line,
+      error: error,
+      result: {
+        rootCause: 'Mock code root cause',
+        suggestions: ['Mock code suggestion'],
+        confidenceLevel: 0.9,
+        category: 'Code Analysis',
+        tags: ['code', 'mock'],
+        references: ['mock-code-ref'],
+      },
+      metadata: {
+        model: 'Mock Code Model',
+        version: '1.0',
+        processingTime: 50,
+        tokensUsed: 25,
+      },
+    };
+  }
+
+  async checkAvailability(): Promise<boolean> {
     return true;
   }
 
-  async obterInfoModelo(): Promise<{
-    nome: string;
-    versao: string;
-    capacidades: string[];
-    limitacoes: string[];
+  async getModelInfo(): Promise<{
+    name: string;
+    version: string;
+    capabilities: string[];
+    limitations: string[];
   }> {
     return {
-      nome: 'Mock Model',
-      versao: '1.0',
-      capacidades: ['Mock capacidade'],
-      limitacoes: ['Mock limitação'],
+      name: 'Mock Model',
+      version: '1.0',
+      capabilities: ['Mock capacidade'],
+      limitations: ['Mock limitação'],
     };
   }
 }
@@ -51,56 +85,75 @@ describe('IAIService', () => {
     service = new MockAIService();
   });
 
-  describe('analisarErro', () => {
-    const mockDados: DadosAnalise = {
-      erro: {
-        tipo: 'TestError',
-        mensagem: 'Test message',
+  describe('analyzeError', () => {
+    const mockData: AnalysisData = {
+      error: {
+        type: 'TestError',
+        message: 'Test message',
       },
-      codigo: 'test code',
+      code: 'test code',
     };
 
-    it('deve retornar uma análise válida', async () => {
-      const resultado = await service.analisarErro(mockDados);
+    it('should return a valid analysis', async () => {
+      const result = await service.analyzeError(mockData);
 
-      expect(resultado).toHaveProperty('id');
-      expect(resultado).toHaveProperty('timestamp');
-      expect(resultado).toHaveProperty('erro');
-      expect(resultado).toHaveProperty('resultado');
-      expect(resultado).toHaveProperty('metadados');
+      expect(result).toHaveProperty('id');
+      expect(result).toHaveProperty('timestamp');
+      expect(result).toHaveProperty('erro');
+      expect(result).toHaveProperty('resultado');
+      expect(result).toHaveProperty('metadados');
 
-      expect(resultado.resultado).toHaveProperty('causaRaiz');
-      expect(resultado.resultado).toHaveProperty('sugestoes');
-      expect(resultado.resultado).toHaveProperty('nivelConfianca');
-      expect(resultado.resultado).toHaveProperty('categoria');
-      expect(resultado.resultado).toHaveProperty('tags');
-      expect(resultado.resultado).toHaveProperty('referencias');
+      expect(result.resultado).toHaveProperty('causaRaiz');
+      expect(result.resultado).toHaveProperty('sugestoes');
+      expect(result.resultado).toHaveProperty('nivelConfianca');
+      expect(result.resultado).toHaveProperty('categoria');
+      expect(result.resultado).toHaveProperty('tags');
+      expect(result.resultado).toHaveProperty('referencias');
 
-      expect(resultado.metadados).toHaveProperty('modelo');
-      expect(resultado.metadados).toHaveProperty('versao');
-      expect(resultado.metadados).toHaveProperty('tempoProcessamento');
-      expect(resultado.metadados).toHaveProperty('tokensUtilizados');
+      expect(result.metadados).toHaveProperty('modelo');
+      expect(result.metadados).toHaveProperty('versao');
+      expect(result.metadados).toHaveProperty('tempoProcessamento');
+      expect(result.metadados).toHaveProperty('tokensUtilizados');
     });
   });
 
-  describe('verificarDisponibilidade', () => {
-    it('deve retornar um booleano', async () => {
-      const resultado = await service.verificarDisponibilidade();
-      expect(typeof resultado).toBe('boolean');
+  describe('analyzeCode', () => {
+    const mockSourceCode = 'const a = 1;';
+    const mockFile = 'test.ts';
+    const mockLine = 1;
+    const mockError = 'SyntaxError';
+
+    it('should return a valid code analysis', async () => {
+      const result = await service.analyzeCode(mockSourceCode, mockFile, mockLine, mockError);
+
+      expect(result).toHaveProperty('id');
+      expect(result).toHaveProperty('timestamp');
+      expect(result).toHaveProperty('file');
+      expect(result).toHaveProperty('line');
+      expect(result).toHaveProperty('error');
+      expect(result).toHaveProperty('result');
+      expect(result).toHaveProperty('metadata');
     });
   });
 
-  describe('obterInfoModelo', () => {
-    it('deve retornar informações do modelo', async () => {
-      const info = await service.obterInfoModelo();
+  describe('checkAvailability', () => {
+    it('should return a boolean', async () => {
+      const result = await service.checkAvailability();
+      expect(typeof result).toBe('boolean');
+    });
+  });
 
-      expect(info).toHaveProperty('nome');
-      expect(info).toHaveProperty('versao');
-      expect(info).toHaveProperty('capacidades');
-      expect(info).toHaveProperty('limitacoes');
+  describe('getModelInfo', () => {
+    it('should return model information', async () => {
+      const info = await service.getModelInfo();
 
-      expect(Array.isArray(info.capacidades)).toBe(true);
-      expect(Array.isArray(info.limitacoes)).toBe(true);
+      expect(info).toHaveProperty('name');
+      expect(info).toHaveProperty('version');
+      expect(info).toHaveProperty('capabilities');
+      expect(info).toHaveProperty('limitations');
+
+      expect(Array.isArray(info.capabilities)).toBe(true);
+      expect(Array.isArray(info.limitations)).toBe(true);
     });
   });
 }); 

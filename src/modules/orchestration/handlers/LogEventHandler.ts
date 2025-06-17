@@ -1,11 +1,10 @@
 import { IGitHubRepository } from '../../github-access/domain/ports/IGitHubRepository';
-import { IAIService } from '../../ai-prompting/domain/ports/IAIService';
-import { IAlertService } from '../../alerting/domain/ports/IAlertService';
+import { IAIService, AnalysisData } from '../../ai-prompting/domain/ports/IAIService';
+import { IAlertService, Alert } from '../../alerting/domain/ports/IAlertService';
 import { IDocumentationService } from '../../documentation/domain/ports/IDocumentationService';
 import { CodeContext } from '../../github-access/domain/CodeContext';
-import { AnaliseErro } from '../../ai-prompting/domain/AnaliseErro';
-import { Alerta } from '../../alerting/domain/Alerta';
-import { InsightTecnico } from '../../documentation/domain/InsightTecnico';
+import { AnaliseIA } from '../../ai-prompting/domain/entities/AnaliseIA';
+import { TechnicalInsight } from '../../documentation/domain/InsightTecnico';
 
 export class LogEventHandler {
   constructor(
@@ -34,32 +33,55 @@ export class LogEventHandler {
       );
 
       // 2. Analisar o erro com a IA
-      const analise: AnaliseErro = await this.aiService.analisarErro(codeContext, logEvent.erro);
+      const analysisData: AnalysisData = {
+        code: codeContext.codigo,
+        error: {
+          type: logEvent.erro.tipo,
+          message: logEvent.erro.mensagem,
+          stackTrace: logEvent.erro.stacktrace,
+        },
+      };
+      const analiseIA: AnaliseIA = await this.aiService.analyzeError(analysisData);
 
       // 3. Enviar alerta no Slack
-      const alerta: Alerta = {
-        servico: logEvent.servico,
-        erro: logEvent.erro,
-        codigo: codeContext,
-        analise,
-        timestamp: new Date().toISOString(),
-        nivel: 'error'
+      const alertDetailsError: Alert['details']['error'] = {
+        type: logEvent.erro.tipo,
+        message: logEvent.erro.mensagem,
+        stackTrace: logEvent.erro.stacktrace,
+        context: {
+          codigo: codeContext,
+          analise: analiseIA,
+        },
       };
-      await this.alertService.enviarAlerta(alerta);
+
+      const newAlert: Omit<Alert, 'id' | 'metadata'> = {
+        timestamp: new Date(),
+        type: 'error',
+        title: `Alerta de ${logEvent.servico}: ${logEvent.erro.tipo}`,
+        message: logEvent.erro.mensagem,
+        details: {
+          error: alertDetailsError,
+        },
+      };
+      await this.alertService.sendAlert(newAlert);
 
       // 4. Criar insight técnico no Confluence
-      const insight: InsightTecnico = {
-        titulo: `Erro em ${logEvent.servico}: ${logEvent.erro.tipo}`,
-        servico: logEvent.servico,
-        erro: logEvent.erro,
-        codigo: codeContext,
-        analise,
-        dataOcorrencia: new Date().toISOString(),
-        status: 'pendente',
-        solucao: analise.sugestaoCorrecao,
-        preventivas: analise.verificacoesAusentes
+      const technicalInsight: TechnicalInsight = {
+        title: `Erro em ${logEvent.servico}: ${logEvent.erro.tipo}`,
+        service: logEvent.servico,
+        error: {
+          type: logEvent.erro.tipo,
+          message: logEvent.erro.mensagem,
+          stacktrace: logEvent.erro.stacktrace,
+        },
+        code: codeContext,
+        analysis: analiseIA,
+        occurrenceDate: new Date().toISOString(),
+        status: 'pending',
+        solution: analiseIA.resultado.sugestoes.join('\n'),
+        preventiveMeasures: analiseIA.resultado.tags
       };
-      await this.documentationService.criarInsight(insight);
+      await this.documentationService.createInsight(technicalInsight);
     } catch (error) {
       console.error('Erro ao processar evento de log:', error);
       throw error;

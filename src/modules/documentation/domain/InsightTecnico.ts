@@ -1,4 +1,4 @@
-import { AnaliseErro } from '../../ai-prompting/domain/AnaliseErro';
+import { AnaliseIA } from '../../ai-prompting/domain/entities/AnaliseIA';
 import { CodeContext } from '../../github-access/domain/CodeContext';
 
 export interface TechnicalInsight {
@@ -10,7 +10,7 @@ export interface TechnicalInsight {
     stacktrace?: string;
   };
   code: CodeContext;
-  analysis: AnaliseErro;
+  analysis: AnaliseIA;
   occurrenceDate: string;
   status: 'resolved' | 'in_progress' | 'pending';
   solution?: string;

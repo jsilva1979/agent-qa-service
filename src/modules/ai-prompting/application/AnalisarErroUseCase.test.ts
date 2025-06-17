@@ -2,6 +2,7 @@ import { AnalisarErroUseCase } from './AnalisarErroUseCase';
 import { IAIService } from '../domain/ports/IAIService';
 import { AnaliseErro } from '../domain/AnaliseErro';
 import { CodeContext } from '../../github-access/domain/CodeContext';
+import { AnaliseIA } from '../domain/entities/AnaliseIA';
 
 describe('AnalisarErroUseCase', () => {
   let useCase: AnalisarErroUseCase;
@@ -9,7 +10,10 @@ describe('AnalisarErroUseCase', () => {
 
   beforeEach(() => {
     mockAIService = {
-      analisarErro: jest.fn(),
+      analyzeError: jest.fn(),
+      analyzeCode: jest.fn(),
+      checkAvailability: jest.fn(),
+      getModelInfo: jest.fn(),
     };
     useCase = new AnalisarErroUseCase(mockAIService);
   });
@@ -29,19 +33,34 @@ describe('AnalisarErroUseCase', () => {
       mensagem: 'name is null',
     };
 
-    const mockAnalise: AnaliseErro = {
-      causa: 'Variável name não foi inicializada',
-      verificacoesAusentes: ['Verificação de null'],
-      sugestaoCorrecao: 'Adicionar verificação if (name != null)',
-      explicacao: 'O erro ocorre porque...',
-      nivelConfianca: 90,
+    const mockAnalise: AnaliseIA = {
+      id: 'mock-id',
+      timestamp: new Date(),
+      erro: {
+        tipo: mockErro.tipo,
+        mensagem: mockErro.mensagem,
+      },
+      resultado: {
+        causaRaiz: 'Variável name não foi inicializada',
+        sugestoes: ['Adicionar verificação if (name != null)'],
+        nivelConfianca: 0.9,
+        categoria: 'Bug',
+        tags: ['null-pointer', 'initialization'],
+        referencias: ['link-to-docs'],
+      },
+      metadados: {
+        modelo: 'gemini-2.0-flash',
+        versao: '1.0',
+        tempoProcessamento: 100,
+        tokensUtilizados: 50,
+      },
     };
 
-    mockAIService.analisarErro.mockResolvedValue(mockAnalise);
+    mockAIService.analyzeError.mockResolvedValue(mockAnalise);
 
     const resultado = await useCase.execute(mockCodigo, mockErro);
 
     expect(resultado).toEqual(mockAnalise);
-    expect(mockAIService.analisarErro).toHaveBeenCalledWith(mockCodigo, mockErro);
+    expect(mockAIService.analyzeError).toHaveBeenCalledWith(mockCodigo, mockErro);
   });
 }); 

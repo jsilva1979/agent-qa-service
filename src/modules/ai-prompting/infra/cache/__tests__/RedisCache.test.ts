@@ -1,5 +1,5 @@
 import { RedisCache } from '../RedisCache';
-import { DadosAnalise } from '../../../domain/ports/IAIService';
+import { AnalysisData } from '../../../domain/ports/IAIService';
 import { AnaliseIA } from '../../../domain/entities/AnaliseIA';
 import { createClient } from 'redis';
 
@@ -29,13 +29,13 @@ describe('RedisCache', () => {
     },
   };
 
-  const mockDados: DadosAnalise = {
-    erro: {
-      tipo: 'NullPointerException',
-      mensagem: 'Cannot read property of null',
+  const mockDados: AnalysisData = {
+    error: {
+      type: 'NullPointerException',
+      message: 'Cannot read property of null',
       stackTrace: 'at UserProcessor.process (UserProcessor.java:23)',
     },
-    codigo: `
+    code: `
       public class UserProcessor {
         public void process(String name) {
           System.out.println(name.length()); // Linha 23
@@ -47,7 +47,11 @@ describe('RedisCache', () => {
   const mockAnalise: AnaliseIA = {
     id: '123',
     timestamp: new Date(),
-    erro: mockDados.erro,
+    erro: {
+      tipo: mockDados.error.type,
+      mensagem: mockDados.error.message,
+      stackTrace: mockDados.error.stackTrace,
+    },
     resultado: {
       causaRaiz: 'Objeto name está nulo',
       sugestoes: ['Adicionar verificação if (name != null)'],

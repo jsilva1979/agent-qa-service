@@ -1,6 +1,6 @@
 import { createClient, RedisClientType } from 'redis';
 import { ICache } from '../../domain/ports/ICache';
-import { DadosAnalise } from '../../domain/ports/IAIService';
+import { AnalysisData } from '../../domain/ports/IAIService';
 import { AnaliseIA } from '../../domain/entities/AnaliseIA';
 import winston from 'winston';
 
@@ -49,13 +49,13 @@ export class RedisCache implements ICache {
     });
   }
 
-  private gerarChave(dados: DadosAnalise): string {
-    return `analise:${dados.erro.tipo}:${dados.erro.mensagem}`;
+  private gerarChave(data: AnalysisData): string {
+    return `analise:${data.error.type}:${data.error.message}`;
   }
 
-  async get(dados: DadosAnalise): Promise<AnaliseIA | null> {
+  async get(data: AnalysisData): Promise<AnaliseIA | null> {
     try {
-      const chave = this.gerarChave(dados);
+      const chave = this.gerarChave(data);
       const valor = await this.client.get(chave);
       
       if (valor) {
@@ -70,9 +70,9 @@ export class RedisCache implements ICache {
     }
   }
 
-  async set(dados: DadosAnalise, analise: AnaliseIA): Promise<void> {
+  async set(data: AnalysisData, analise: AnaliseIA): Promise<void> {
     try {
-      const chave = this.gerarChave(dados);
+      const chave = this.gerarChave(data);
       await this.client.set(chave, JSON.stringify(analise), {
         EX: this.config.ttl,
       });

@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { IAIService, DadosAnalise, AnaliseCodigo } from '../../domain/ports/IAIService';
+import { IAIService, AnalysisData, CodeAnalysis } from '../../domain/ports/IAIService';
 import { AnaliseIA } from '../../domain/entities/AnaliseIA';
 import { Logger } from 'winston';
 import crypto from 'crypto';
@@ -17,7 +17,7 @@ export class GeminiServiceAdapter implements IAIService {
     this.model = this.genAI.getGenerativeModel({ model });
   }
 
-  async verificarDisponibilidade(): Promise<boolean> {
+  async checkAvailability(): Promise<boolean> {
     try {
       const model = this.genAI.getGenerativeModel({ model: this.model });
       await model.generateContent('Teste de disponibilidade');
@@ -28,72 +28,72 @@ export class GeminiServiceAdapter implements IAIService {
     }
   }
 
-  async analisarCodigo(
-    codigoFonte: string,
-    arquivo: string,
-    linha: number,
-    erro: string
-  ): Promise<AnaliseCodigo> {
+  async analyzeCode(
+    sourceCode: string,
+    file: string,
+    line: number,
+    error: string
+  ): Promise<CodeAnalysis> {
     try {
-      const inicioProcessamento = Date.now();
+      const processingStartTime = Date.now();
       
-      const prompt = this.prepararPromptCodigo(codigoFonte, arquivo, linha, erro);
+      const prompt = this.prepareCodePrompt(sourceCode, file, line, error);
       const response = await this.model.generateContent(prompt);
-      const texto = response.response.text();
+      const text = response.response.text();
 
-      const analise: AnaliseCodigo = {
+      const analysis: CodeAnalysis = {
         id: crypto.randomUUID(),
         timestamp: new Date(),
-        arquivo,
-        linha,
-        erro,
-        resultado: {
-          causaRaiz: this.extrairCausaRaiz(texto),
-          sugestoes: this.extrairSugestoes(texto),
-          nivelConfianca: this.calcularNivelConfianca(texto),
-          categoria: this.extrairCategoria(texto),
-          tags: this.extrairTags(texto),
-          referencias: this.extrairReferencias(texto)
+        file: file,
+        line: line,
+        error: error,
+        result: {
+          rootCause: this.extractRootCause(text),
+          suggestions: this.extractSuggestions(text),
+          confidenceLevel: this.calculateConfidenceLevel(text),
+          category: this.extractCategory(text),
+          tags: this.extractTags(text),
+          references: this.extractReferences(text)
         },
-        metadados: {
-          modelo: this.model.model,
-          versao: '2.0-flash',
-          tempoProcessamento: Date.now() - inicioProcessamento,
-          tokensUtilizados: this.contarTokens(texto)
+        metadata: {
+          model: this.model.model,
+          version: '2.0-flash',
+          processingTime: Date.now() - processingStartTime,
+          tokensUsed: this.countTokens(text)
         }
       };
 
       this.logger.info('Análise de código concluída', {
-        arquivo,
-        linha,
-        erro,
-        tempoProcessamento: analise.metadados.tempoProcessamento
+        file,
+        line,
+        error,
+        processingTime: analysis.metadata.processingTime
       });
 
-      return analise;
+      return analysis;
     } catch (error) {
       this.logger.error('Erro ao analisar código:', error);
       throw error;
     }
   }
 
-  private prepararPromptCodigo(
-    codigoFonte: string,
-    arquivo: string,
-    linha: number,
-    erro: string
+  private prepareCodePrompt(
+    sourceCode: string,
+    file: string,
+    line: number,
+    error: string
   ): string {
     return `
       Você é um engenheiro de QA autônomo.
 
       Abaixo está o trecho de código onde ocorreu o erro:
 
-      Arquivo: ${arquivo}
-      Linha: ${linha}
-      Erro: ${erro}
+      Arquivo: ${file}
+      Linha: ${line}
+      Erro: ${error}
 
       Código:
-      ${codigoFonte}
+      ${sourceCode}
 
       Por favor, analise o código e forneça:
       1. A causa raiz do problema
@@ -104,42 +104,42 @@ export class GeminiServiceAdapter implements IAIService {
     `;
   }
 
-  private extrairCausaRaiz(texto: string): string {
+  private extractRootCause(text: string): string {
     // Implementar lógica de extração da causa raiz
-    return texto.split('\n')[0];
+    return text.split('\n')[0];
   }
 
-  private extrairSugestoes(texto: string): string[] {
+  private extractSuggestions(text: string): string[] {
     // Implementar lógica de extração das sugestões
-    return texto.split('\n').filter(line => line.startsWith('- '));
+    return text.split('\n').filter(line => line.startsWith('- '));
   }
 
-  private calcularNivelConfianca(texto: string): number {
+  private calculateConfidenceLevel(text: string): number {
     // Implementar lógica de cálculo do nível de confiança
     return 0.8;
   }
 
-  private extrairCategoria(texto: string): string {
+  private extractCategory(text: string): string {
     // Implementar lógica de extração da categoria
     return 'Erro de Sistema';
   }
 
-  private extrairTags(texto: string): string[] {
+  private extractTags(text: string): string[] {
     // Implementar lógica de extração das tags
     return ['erro', 'sistema'];
   }
 
-  private extrairReferencias(texto: string): string[] {
+  private extractReferences(text: string): string[] {
     // Implementar lógica de extração das referências
     return [];
   }
 
-  private contarTokens(texto: string): number {
+  private countTokens(text: string): number {
     // Implementar lógica de contagem de tokens
-    return texto.split(/\s+/).length;
+    return text.split(/\s+/).length;
   }
 
-  async analisarErro(dados: DadosAnalise): Promise<AnaliseIA> {
+  async analyzeError(data: AnalysisData): Promise<AnaliseIA> {
     try {
       const model = this.genAI.getGenerativeModel({ model: this.model });
       const prompt = `
@@ -147,42 +147,47 @@ Você é um engenheiro de QA autônomo.
 
 Analise o seguinte erro e forneça uma análise detalhada:
 
-Tipo: ${dados.erro.tipo}
-Mensagem: ${dados.erro.mensagem}
-Stack Trace: ${dados.erro.stackTrace || 'N/A'}
+Tipo: ${data.error.type}
+Mensagem: ${data.error.message}
+Stack Trace: ${data.error.stackTrace || 'N/A'}
 
 Código:
 \`\`\`
-${dados.codigo}
+${data.code}
 \`\`\`
 
 Logs:
-${dados.logs?.join('\n') || 'N/A'}
+${data.logs?.join('\n') || 'N/A'}
 
 Métricas:
-CPU: ${dados.metricas?.cpu || 'N/A'}%
-Memória: ${dados.metricas?.memoria || 'N/A'}%
-Latência: ${dados.metricas?.latencia || 'N/A'}ms
+CPU: ${data.metrics?.cpu || 'N/A'}%
+Memória: ${data.metrics?.memory || 'N/A'}%
+Latência: ${data.metrics?.latency || 'N/A'}ms
 
 Contexto:
-${JSON.stringify(dados.contexto || {}, null, 2)}
+${JSON.stringify(data.context || {}, null, 2)}
 `;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      const texto = response.text();
+      const text = response.text();
 
       // Parseia a resposta do Gemini para o formato AnaliseIA
-      const linhas = texto.split('\n');
+      const lines = text.split('\n');
       
       return {
         id: crypto.randomUUID(),
         timestamp: new Date(),
-        erro: dados.erro,
+        erro: {
+          tipo: data.error.type,
+          mensagem: data.error.message,
+          stackTrace: data.error.stackTrace,
+          contexto: data.error.context,
+        },
         resultado: {
-          causaRaiz: linhas[0] || 'Causa não identificada',
+          causaRaiz: lines[0] || 'Causa não identificada',
           nivelConfianca: 0.8,
-          sugestoes: linhas.slice(1).filter(l => l.trim().startsWith('-')),
+          sugestoes: lines.slice(1).filter(l => l.trim().startsWith('-')),
           referencias: [],
           tags: [],
           categoria: 'erro'
@@ -195,31 +200,22 @@ ${JSON.stringify(dados.contexto || {}, null, 2)}
         }
       };
     } catch (error) {
-      this.logger.error('Erro ao analisar erro com Gemini', { error, dados });
+      this.logger.error('Erro ao analisar erro com Gemini', { error, data });
       throw error;
     }
   }
 
-  async obterInfoModelo(): Promise<{
-    nome: string;
-    versao: string;
-    capacidades: string[];
-    limitacoes: string[];
+  async getModelInfo(): Promise<{
+    name: string;
+    version: string;
+    capabilities: string[];
+    limitations: string[];
   }> {
     return {
-      nome: 'Gemini',
-      versao: '2.0-flash',
-      capacidades: [
-        'Análise de código',
-        'Diagnóstico de erros',
-        'Sugestões de correção',
-        'Análise de logs'
-      ],
-      limitacoes: [
-        'Contexto limitado',
-        'Não executa código',
-        'Não acessa banco de dados'
-      ]
+      name: 'Mock Model',
+      version: '1.0',
+      capabilities: ['Mock capacidade'],
+      limitations: ['Mock limitação'],
     };
   }
 } 

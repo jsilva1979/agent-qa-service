@@ -13,6 +13,6 @@ export class AnalisarErroUseCase {
       stacktrace?: string;
     }
   ): Promise<AnaliseErro> {
-    return this.aiService.analisarErro(codigo, erro);
+    return this.aiService.analyzeError(codigo, erro);
   }
 } 

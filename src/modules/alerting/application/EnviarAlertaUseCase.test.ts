@@ -10,7 +10,10 @@ describe('EnviarAlertaUseCase', () => {
 
   beforeEach(() => {
     mockAlertService = {
-      enviarAlerta: jest.fn(),
+      sendAlert: jest.fn(),
+      sendErrorAlert: jest.fn(),
+      sendMetricsAlert: jest.fn(),
+      checkAvailability: jest.fn(),
     };
     useCase = new EnviarAlertaUseCase(mockAlertService);
   });
@@ -47,6 +50,24 @@ describe('EnviarAlertaUseCase', () => {
 
     await useCase.execute(mockAlerta);
 
-    expect(mockAlertService.enviarAlerta).toHaveBeenCalledWith(mockAlerta);
+    const expectedAlertPayload = {
+      timestamp: expect.any(Date),
+      type: 'error',
+      title: `Alerta de ${mockAlerta.servico}: ${mockAlerta.erro.tipo}`,
+      message: mockAlerta.erro.mensagem,
+      details: {
+        error: {
+          type: mockAlerta.erro.tipo,
+          message: mockAlerta.erro.mensagem,
+          stackTrace: mockAlerta.erro.stacktrace,
+          context: {
+            codigo: mockAlerta.codigo,
+            analise: mockAlerta.analise,
+          },
+        },
+      },
+    };
+
+    expect(mockAlertService.sendAlert).toHaveBeenCalledWith(expectedAlertPayload);
   });
 }); 

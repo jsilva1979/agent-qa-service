@@ -24,15 +24,24 @@ describe('SlackAlertService', () => {
     }
   };
 
+  const commonConfig = {
+    logging: {
+      level: 'info',
+      file: {
+        path: 'logs/test.log'
+      }
+    },
+    jira: {
+      url: 'https://jira.test.com'
+    }
+  };
+
   beforeEach(() => {
     slackAlertService = new SlackAlertService({
-      webhookUrl: 'https://hooks.slack.com/services/test',
-      logging: {
-        level: 'info',
-        file: {
-          path: 'logs/test.log'
-        }
-      }
+      accessToken: 'test_access_token',
+      refreshToken: 'test_refresh_token',
+      channel: '#test-channel',
+      ...commonConfig
     });
   });
 
@@ -41,28 +50,61 @@ describe('SlackAlertService', () => {
   });
 
   describe('construtor', () => {
-    it('deve lançar erro quando webhookUrl não estiver configurado', () => {
+    it('deve lançar erro quando accessToken não estiver configurado', () => {
       expect(() => new SlackAlertService({
-        webhookUrl: '',
+        accessToken: '',
+        refreshToken: 'test_refresh_token',
+        channel: '#test-channel',
+        ...commonConfig
+      })).toThrow('SLACK_ACCESS_TOKEN não configurado');
+    });
+
+    it('deve lançar erro quando refreshToken não estiver configurado', () => {
+      expect(() => new SlackAlertService({
+        accessToken: 'test_access_token',
+        refreshToken: '',
+        channel: '#test-channel',
+        ...commonConfig
+      })).toThrow('SLACK_REFRESH_TOKEN não configurado');
+    });
+
+    it('deve lançar erro quando channel não estiver configurado', () => {
+      expect(() => new SlackAlertService({
+        accessToken: 'test_access_token',
+        refreshToken: 'test_refresh_token',
+        channel: '',
+        ...commonConfig
+      })).toThrow('SLACK_CHANNEL não configurado');
+    });
+
+    it('deve lançar erro quando jira.url não estiver configurado', () => {
+      expect(() => new SlackAlertService({
+        accessToken: 'test_access_token',
+        refreshToken: 'test_refresh_token',
+        channel: '#test-channel',
         logging: {
           level: 'info',
           file: {
             path: 'logs/test.log'
           }
+        },
+        jira: {
+          url: '',
         }
-      })).toThrow('SLACK_WEBHOOK_URL não configurado');
+      })).toThrow('JIRA_URL não configurado');
     });
   });
 
-  describe('enviarAlerta', () => {
+  describe('sendAlert', () => {
     it('deve enviar alerta com sucesso', async () => {
       mockedAxios.post.mockResolvedValueOnce({ status: 200 });
 
       const result = await slackAlertService.sendAlert(mockAlerta);
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://hooks.slack.com/services/test',
+        'https://slack.com/api/chat.postMessage',
         expect.objectContaining({
+          channel: '#test-channel',
           blocks: expect.arrayContaining([
             expect.objectContaining({
               type: 'header',
@@ -81,7 +123,7 @@ describe('SlackAlertService', () => {
       mockedAxios.post.mockRejectedValueOnce(error);
 
       await expect(slackAlertService.sendAlert(mockAlerta))
-        .rejects.toThrow('Erro ao enviar alerta para o Slack: Erro de rede');
+        .rejects.toThrow(/Erro ao enviar alerta para o Slack/);
     });
   });
 }); 
