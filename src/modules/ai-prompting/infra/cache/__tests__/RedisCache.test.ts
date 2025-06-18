@@ -1,6 +1,6 @@
 import { RedisCache } from '../RedisCache';
 import { AnalysisData } from '../../../domain/ports/IAIService';
-import { AnaliseIA } from '../../../domain/entities/AnaliseIA';
+import { AnalyzeAI } from '../../../domain/entities/AnalyzeAI';
 import { createClient } from 'redis';
 
 // Mock do Redis client
@@ -44,7 +44,7 @@ describe('RedisCache', () => {
     `,
   };
 
-  const mockAnalise: AnaliseIA = {
+  const mockAnalise: AnalyzeAI = {
     id: '123',
     timestamp: new Date(),
     erro: {

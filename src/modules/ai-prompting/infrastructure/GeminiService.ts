@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { IAIService, AnalysisData, CodeAnalysis } from '../domain/ports/IAIService';
-import { AnaliseErro } from '../domain/AnaliseErro';
+import { AnalyzeError } from '../domain/AnalyzeError';
 import { CodeContext } from '../../github-access/domain/CodeContext';
-import { AnaliseIA } from '../domain/entities/AnaliseIA';
+import { AnalyzeAI } from '../domain/entities/AnalyzeAI';
 
 export class GeminiService implements IAIService {
   private readonly genAI: GoogleGenerativeAI;
@@ -16,7 +16,7 @@ export class GeminiService implements IAIService {
     this.genAI = new GoogleGenerativeAI(apiKey);
   }
 
-  async analyzeError(data: AnalysisData): Promise<AnaliseIA> {
+  async analyzeError(data: AnalysisData): Promise<AnalyzeAI> {
     try {
       const model = this.genAI.getGenerativeModel({ model: this.model });
 
@@ -159,7 +159,7 @@ ${sourceCode}
     };
   }
 
-  private parsearRespostaGemini(resposta: string): AnaliseErro {
+  private parsearRespostaGemini(resposta: string): AnalyzeError {
     // Extrair campos da resposta usando regex
     const causaMatch = resposta.match(/Causa: (.*?)(?:\n|$)/);
     const verificacoesMatch = resposta.match(/Verificações ausentes: (.*?)(?:\n|$)/);
@@ -167,7 +167,7 @@ ${sourceCode}
     const explicacaoMatch = resposta.match(/Explicação: (.*?)(?:\n|$)/);
     const nivelConfiancaMatch = resposta.match(/Nível de confiança: (\d+)/);
 
-    // Mapear para o objeto AnaliseErro
+    // Mapear para o objeto AnalyzeError
     return {
       causa: causaMatch ? causaMatch[1].trim() : "Causa não identificada",
       verificacoesAusentes: verificacoesMatch ? verificacoesMatch[1].split(',').map(v => v.trim()) : [],

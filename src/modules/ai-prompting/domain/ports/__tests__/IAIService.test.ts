@@ -1,5 +1,5 @@
 import { IAIService, AnalysisData, CodeAnalysis } from '../IAIService';
-import { AnaliseIA } from '../../entities/AnaliseIA';
+import { AnaliseIA } from '../../entities/AnalyzeAI';
 
 // Classe mock para testar a interface
 class MockAIService implements IAIService {

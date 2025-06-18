@@ -1,9 +1,8 @@
 import { WebClient } from '@slack/web-api';
 import { GeminiAIService } from '../application/GeminiAIService';
-import { config } from '../config/config';
-import axios from 'axios';
 import { JiraService } from '../../../shared/infrastructure/jiraService';
-import { AnaliseIA } from '../domain/entities/AnaliseIA';
+import { AnalyzeAI } from '@/modules/ai-prompting/domain/entities/AnalyzeAI';
+import { beforeAll, describe, it, expect } from '@jest/globals';
 
 describe('Demonstração do GeminiAIService com Slack', () => {
   let slackClient: WebClient;
@@ -26,7 +25,7 @@ describe('Demonstração do GeminiAIService com Slack', () => {
     });
 
     // Simula uma análise de código
-    const analise: AnaliseIA = {
+    const analise: AnalyzeAI = {
       id: 'test-id',
       timestamp: new Date(),
       erro: {
@@ -170,7 +169,7 @@ describe('Demonstração do GeminiAIService com Slack', () => {
     });
 
     // Simula uma análise de erro em produção
-    const analise: AnaliseIA = {
+    const analise: AnalyzeAI = {
       id: 'prod-error-id',
       timestamp: new Date(),
       erro: {

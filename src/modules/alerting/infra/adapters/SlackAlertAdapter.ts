@@ -1,5 +1,5 @@
 import { IAlertService, Alert } from '../../domain/ports/IAlertService';
-import { AnaliseIA } from '../../../ai-prompting/domain/entities/AnaliseIA';
+import { AnaliseIA } from '../../../ai-prompting/domain/entities/AnalyzeAI';
 import { WebClient } from '@slack/web-api';
 import winston from 'winston';
 import crypto from 'crypto';

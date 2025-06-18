@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { GeminiService } from '../GeminiService';
-import { AnaliseErro } from '../../domain/AnaliseErro';
+import { AnalyzeError } from '../../domain/AnalyzeError';
 
 describe('GeminiService Unit', () => {
   let geminiService: GeminiService;

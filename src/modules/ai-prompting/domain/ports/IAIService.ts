@@ -1,4 +1,4 @@
-import { AnaliseIA } from '../entities/AnaliseIA';
+import { AnalyzeAI } from '@/modules/ai-prompting/domain/entities/AnalyzeAI';
 
 export interface CodeAnalysis {
   /**
@@ -127,7 +127,7 @@ export interface IAIService {
   /**
    * Analisa um erro e retorna uma análise detalhada
    */
-  analyzeError(data: AnalysisData): Promise<AnaliseIA>;
+  analyzeError(data: AnalysisData): Promise<AnalyzeAI>;
 
   /**
    * Analisa um trecho de código e retorna uma análise detalhada

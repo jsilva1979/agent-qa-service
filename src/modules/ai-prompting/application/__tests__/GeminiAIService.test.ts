@@ -1,6 +1,6 @@
 import { GeminiAIService } from '../GeminiAIService';
 import { IAIService, AnalysisData } from '../../domain/ports/IAIService';
-import { AnaliseIA } from '../../domain/entities/AnaliseIA';
+import { AnalyzeAI } from '@/modules/ai-prompting/domain/entities/AnalyzeAI';
 import { ICache } from '../../domain/ports/ICache';
 
 jest.mock('@google/generative-ai');
@@ -113,7 +113,7 @@ describe('GeminiAIService', () => {
     });
 
     it('deve obter análise do cache quando disponível', async () => {
-      const mockAnalise: AnaliseIA = {
+      const mockAnalise: AnalyzeAI = {
         id: '123',
         timestamp: new Date(),
         erro: {

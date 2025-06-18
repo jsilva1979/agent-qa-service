@@ -1,11 +1,11 @@
-import { AnalisarErroUseCase } from './AnalisarErroUseCase';
+import { AnalyzeErrorUseCase } from './AnalyzeErrorUseCase';
 import { IAIService } from '../domain/ports/IAIService';
-import { AnaliseErro } from '../domain/AnaliseErro';
+import { AnalyzeError } from '../domain/AnalyzeError';
 import { CodeContext } from '../../github-access/domain/CodeContext';
-import { AnaliseIA } from '../domain/entities/AnaliseIA';
+import { AnalyzeAI } from '../domain/entities/AnalyzeAI';
 
-describe('AnalisarErroUseCase', () => {
-  let useCase: AnalisarErroUseCase;
+describe('AnalyzeErrorUseCase', () => {
+  let useCase: AnalyzeErrorUseCase;
   let mockAIService: jest.Mocked<IAIService>;
 
   beforeEach(() => {
@@ -15,7 +15,7 @@ describe('AnalisarErroUseCase', () => {
       checkAvailability: jest.fn(),
       getModelInfo: jest.fn(),
     };
-    useCase = new AnalisarErroUseCase(mockAIService);
+    useCase = new AnalyzeErrorUseCase(mockAIService);
   });
 
   it('deve analisar o erro corretamente', async () => {
@@ -33,7 +33,7 @@ describe('AnalisarErroUseCase', () => {
       mensagem: 'name is null',
     };
 
-    const mockAnalise: AnaliseIA = {
+    const mockAnalise: AnalyzeAI = {
       id: 'mock-id',
       timestamp: new Date(),
       erro: {

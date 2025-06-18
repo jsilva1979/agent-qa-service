@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { IAIService, AnalysisData, CodeAnalysis } from '../domain/ports/IAIService';
-import { AnaliseIA } from '../domain/entities/AnaliseIA';
+import { AnalyzeAI } from '../domain/entities/AnalyzeAI';
 import { ICache } from '../domain/ports/ICache';
 import { config } from '../config/config';
 import winston from 'winston';
@@ -142,7 +142,7 @@ export class GeminiAIService implements IAIService {
     );
   }
 
-  async analyzeError(data: AnalysisData): Promise<AnaliseIA> {
+  async analyzeError(data: AnalysisData): Promise<AnalyzeAI> {
     try {
       // Tenta obter do cache primeiro
       if (this.cache) {
@@ -157,7 +157,7 @@ export class GeminiAIService implements IAIService {
       const prompt = this.prepararPrompt(data);
       const texto = await this.callGeminiAPI(prompt);
 
-      const analise: AnaliseIA = {
+      const analise: AnalyzeAI = {
         id: crypto.randomUUID(),
         timestamp: new Date(),
         erro: {

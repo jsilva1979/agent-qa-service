@@ -1,7 +1,7 @@
-import { AnaliseIA } from '../AnaliseIA';
+import { AnalyzeAI } from '../AnalyzeAI';
 
-describe('AnaliseIA', () => {
-  const mockAnalise: AnaliseIA = {
+describe('AnalyzeAI', () => {
+  const mockAnalise: AnalyzeAI = {
     id: 'test-id',
     timestamp: new Date(),
     erro: {

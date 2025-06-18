@@ -1,4 +1,4 @@
-export interface AnaliseIA {
+export interface AnalyzeAI {
   /**
    * ID único da análise
    */

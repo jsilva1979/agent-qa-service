@@ -1,5 +1,5 @@
-import { AnaliseIA } from '../entities/AnaliseIA';
-import { DadosAnalise } from './IAIService';
+import { AnalyzeAI } from '@/modules/ai-prompting/domain/entities/AnalyzeAI';
+import { AnalysisData } from './IAIService';
 
 export interface ICache {
   /**
@@ -7,14 +7,14 @@ export interface ICache {
    * @param dados Dados do erro para buscar no cache
    * @returns Promise com a análise em cache ou null se não encontrada
    */
-  get(dados: DadosAnalise): Promise<AnaliseIA | null>;
+  get(dados: AnalysisData): Promise<AnalyzeAI | null>;
 
   /**
    * Armazena uma análise no cache
    * @param dados Dados do erro
    * @param analise Análise a ser armazenada
    */
-  set(dados: DadosAnalise, analise: AnaliseIA): Promise<void>;
+  set(dados: AnalysisData, analise: AnalyzeAI): Promise<void>;
 
   /**
    * Limpa todo o cache

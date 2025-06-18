@@ -23,7 +23,15 @@ describe('GeminiService Integration', () => {
       mensagem: 'y is not defined'
     };
 
-    const resultado = await geminiService.analisarErro(codeContext, erro);
+    const analysisData = {
+      code: codeContext.codigo,
+      error: {
+        type: erro.tipo,
+        message: erro.mensagem
+      }
+    };
+
+    const resultado = await geminiService.analyzeError(analysisData);
     expect(resultado).toHaveProperty('causa');
     expect(resultado).toHaveProperty('sugestaoCorrecao');
     expect(resultado).toHaveProperty('explicacao');

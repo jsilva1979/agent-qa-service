@@ -7,11 +7,14 @@ import { IDocumentationService } from '../../../documentation/domain/ports/IDocu
 import { Request, Response, Router } from 'express';
 
 jest.mock('../../../orchestration/handlers/LogEventHandler');
+
+const mockRouter = {
+  post: jest.fn(),
+  get: jest.fn()
+};
+
 jest.mock('express', () => ({
-  Router: jest.fn(() => ({
-    post: jest.fn(),
-    get: jest.fn()
-  }))
+  Router: jest.fn(() => mockRouter)
 }));
 
 describe('LogRoutes', () => {
@@ -20,40 +23,34 @@ describe('LogRoutes', () => {
   let mockAIService: jest.Mocked<IAIService>;
   let mockAlertService: jest.Mocked<IAlertService>;
   let mockDocumentationService: jest.Mocked<IDocumentationService>;
-  let mockRouter: any;
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
 
   beforeEach(() => {
     mockGitHubRepository = {
-      obterCodigo: jest.fn(),
-      obterInfoRepositorio: jest.fn(),
-      obterHistoricoCommits: jest.fn(),
-      verificarDisponibilidade: jest.fn()
+      getCode: jest.fn(),
+      getRepositoryInfo: jest.fn(),
+      getCommitHistory: jest.fn(),
+      checkAvailability: jest.fn()
     } as any;
 
     mockAIService = {
-      analisarErro: jest.fn(),
-      analisarCodigo: jest.fn(),
-      verificarDisponibilidade: jest.fn(),
-      obterInfoModelo: jest.fn()
+      analyzeError: jest.fn(),
+      analyzeCode: jest.fn(),
+      checkAvailability: jest.fn(),
+      getModelInfo: jest.fn()
     } as any;
 
     mockAlertService = {
-      enviarAlerta: jest.fn(),
-      verificarDisponibilidade: jest.fn()
+      sendAlert: jest.fn(),
+      checkAvailability: jest.fn()
     } as any;
 
     mockDocumentationService = {
-      criarInsight: jest.fn(),
-      atualizarInsight: jest.fn(),
-      buscarInsight: jest.fn()
+      createInsight: jest.fn(),
+      updateInsight: jest.fn(),
+      getInsight: jest.fn()
     } as any;
-
-    mockRouter = {
-      post: jest.fn(),
-      get: jest.fn()
-    };
 
     mockRequest = {
       body: {
@@ -88,8 +85,8 @@ describe('LogRoutes', () => {
       };
       (LogEventHandler as jest.Mock).mockImplementation(() => mockLogEventHandler);
 
-      const router = logRoutes.getRouter();
-      const postHandler = router.post.mock.calls[0][1];
+      logRoutes.getRouter();
+      const postHandler = mockRouter.post.mock.calls[0][1];
 
       await postHandler(mockRequest as Request, mockResponse as Response);
 
@@ -107,8 +104,8 @@ describe('LogRoutes', () => {
       };
       (LogEventHandler as jest.Mock).mockImplementation(() => mockLogEventHandler);
 
-      const router = logRoutes.getRouter();
-      const postHandler = router.post.mock.calls[0][1];
+      logRoutes.getRouter();
+      const postHandler = mockRouter.post.mock.calls[0][1];
 
       await postHandler(mockRequest as Request, mockResponse as Response);
 
@@ -122,8 +119,8 @@ describe('LogRoutes', () => {
 
   describe('GET /health', () => {
     it('deve retornar status ok', () => {
-      const router = logRoutes.getRouter();
-      const getHandler = router.get.mock.calls[0][1];
+      logRoutes.getRouter();
+      const getHandler = mockRouter.get.mock.calls[0][1];
 
       getHandler(mockRequest as Request, mockResponse as Response);
 

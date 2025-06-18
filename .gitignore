@@ -30,3 +30,5 @@ logs/
 
 # Testing
 coverage/ 
+
+docs/

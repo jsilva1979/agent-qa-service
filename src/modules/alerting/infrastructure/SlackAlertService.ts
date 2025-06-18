@@ -1,6 +1,6 @@
 import { WebClient } from '@slack/web-api';
 import { IAlertService, Alert } from '../domain/ports/IAlertService';
-import { AnaliseIA } from '../../ai-prompting/domain/entities/AnaliseIA';
+import { AnalyzeAI } from '../../ai-prompting/domain/entities/AnalyzeAI';
 import { SlackAuthService } from '../../../shared/infrastructure/slackAuth';
 import winston from 'winston';
 import crypto from 'crypto';
@@ -97,7 +97,7 @@ export class SlackAlertService implements IAlertService {
     }
   }
 
-  async sendErrorAlert(error: Alert['details']['error'], analysis: AnaliseIA): Promise<string> {
+  async sendErrorAlert(error: Alert['details']['error'], analysis: AnalyzeAI): Promise<string> {
     try {
       if (!error) {
         throw new Error('Dados do erro não fornecidos');
@@ -215,7 +215,7 @@ export class SlackAlertService implements IAlertService {
     };
   }
 
-  private formatErrorAlertMessage(alert: Alert, analysis: AnaliseIA): any {
+  private formatErrorAlertMessage(alert: Alert, analysis: AnalyzeAI): any {
     const jiraCreateIssueUrl = `${this.jiraUrl}/secure/CreateIssue!default.jspa`;
 
     return {

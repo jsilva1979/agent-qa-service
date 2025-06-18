@@ -1,5 +1,5 @@
-import { IOrchestrator } from '../../orchestration/domain/ports/IOrchestrator';
-import { LogEntry } from '../../log-analysis/domain/entities/LogEntry';
+import { IOrchestrator } from '../../../orchestration/domain/ports/IOrchestrator';
+import { LogEntry } from '../../../log-analysis/domain/entities/LogEntry';
 
 export interface IApiServer {
   /**

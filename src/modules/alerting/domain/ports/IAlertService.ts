@@ -1,4 +1,4 @@
-import { AnaliseIA } from '../../../ai-prompting/domain/entities/AnaliseIA';
+import { AnalyzeAI } from '../../../ai-prompting/domain/entities/AnalyzeAI';
 
 export interface Alert {
   id: string;
@@ -40,7 +40,7 @@ export interface IAlertService {
    * @param analysis Análise do erro gerada pelo Gemini
    * @returns ID do alerta enviado
    */
-  sendErrorAlert(error: Alert['details']['error'], analysis: AnaliseIA): Promise<string>;
+  sendErrorAlert(error: Alert['details']['error'], analysis: AnalyzeAI): Promise<string>;
 
   /**
    * Envia um alerta de métricas do sistema

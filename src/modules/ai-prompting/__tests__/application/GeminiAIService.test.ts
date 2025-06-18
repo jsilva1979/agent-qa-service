@@ -1,7 +1,7 @@
 import { GeminiAIService } from '../../application/GeminiAIService';
 import { ICache } from '../../domain/ports/ICache';
 import { AnalysisData } from '../../domain/ports/IAIService';
-import { AnaliseIA } from '../../domain/entities/AnaliseIA';
+import { AnalyzeAI } from '../../domain/entities/AnalyzeAI';
 import winston from 'winston';
 
 describe('GeminiAIService', () => {
@@ -50,7 +50,7 @@ describe('GeminiAIService', () => {
       }
     };
 
-    const mockAnaliseIA: AnaliseIA = {
+    const mockAnalyzeAI: AnalyzeAI = {
       id: 'test-id',
       timestamp: new Date(),
       erro: {
@@ -76,12 +76,12 @@ describe('GeminiAIService', () => {
     };
 
     it('should return cached analysis if available', async () => {
-      mockCache.get.mockResolvedValue(mockAnaliseIA);
+      mockCache.get.mockResolvedValue(mockAnalyzeAI);
 
       const result = await geminiAIService.analyzeError(mockAnalysisData);
 
       expect(mockCache.get).toHaveBeenCalledWith(mockAnalysisData);
-      expect(result).toEqual(mockAnaliseIA);
+      expect(result).toEqual(mockAnalyzeAI);
     });
 
     it('should call Gemini API and cache result when no cache available', async () => {

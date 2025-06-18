@@ -1,7 +1,7 @@
 import { SlackAlertService } from '../../infrastructure/SlackAlertService';
 import { WebClient } from '@slack/web-api';
 import { SlackAuthService } from '../../../../shared/infrastructure/slackAuth';
-import { AnaliseIA } from '../../../ai-prompting/domain/entities/AnaliseIA';
+import { AnalyzeAI } from '../../../ai-prompting/domain/entities/AnalyzeAI';
 
 // Mock do WebClient
 jest.mock('@slack/web-api');
@@ -42,6 +42,9 @@ describe('SlackAlertService', () => {
           path: 'logs/test.log',
         },
       },
+      jira: {
+        url: 'https://test-jira.example.com'
+      }
     });
 
     // Substitui o authService pelo mock
@@ -75,7 +78,7 @@ describe('SlackAlertService', () => {
         message: 'Erro de teste',
       };
 
-      const analysis: AnaliseIA = {
+      const analysis: AnalyzeAI = {
         id: 'test-id',
         timestamp: new Date(),
         erro: {

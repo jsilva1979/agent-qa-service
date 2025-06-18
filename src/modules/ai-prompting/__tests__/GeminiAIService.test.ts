@@ -1,5 +1,4 @@
 import { GeminiAIService } from '../application/GeminiAIService';
-import { config } from '../config/config';
 import { RedisCache } from '../infra/cache/RedisCache';
 
 // Mock do Redis

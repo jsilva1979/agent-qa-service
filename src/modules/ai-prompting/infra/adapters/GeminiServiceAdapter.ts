@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { IAIService, AnalysisData, CodeAnalysis } from '../../domain/ports/IAIService';
-import { AnaliseIA } from '../../domain/entities/AnaliseIA';
+import { AnalyzeAI } from '../../domain/entities/AnalyzeAI';
 import { Logger } from 'winston';
 import crypto from 'crypto';
 
@@ -139,7 +139,7 @@ export class GeminiServiceAdapter implements IAIService {
     return text.split(/\s+/).length;
   }
 
-  async analyzeError(data: AnalysisData): Promise<AnaliseIA> {
+  async analyzeError(data: AnalysisData): Promise<AnalyzeAI> {
     try {
       const model = this.genAI.getGenerativeModel({ model: this.model });
       const prompt = `
@@ -172,7 +172,7 @@ ${JSON.stringify(data.context || {}, null, 2)}
       const response = await result.response;
       const text = response.text();
 
-      // Parseia a resposta do Gemini para o formato AnaliseIA
+      // Parseia a resposta do Gemini para o formato AnalyzeAI
       const lines = text.split('\n');
       
       return {

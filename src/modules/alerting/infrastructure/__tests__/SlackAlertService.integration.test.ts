@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { SlackAlertService } from '../SlackAlertService';
-import { Alerta } from '../../domain/Alerta';
-import { AnaliseErro } from '../../../ai-prompting/domain/AnaliseErro';
+import { AlertInput } from '../../domain/AlertInput';
+import { AnalyzeError } from '../../../ai-prompting/domain/AnalyzeError';
 import { CodeContext } from '../../../github-access/domain/CodeContext';
 
 describe('SlackAlertService Integration', () => {
@@ -25,13 +25,13 @@ describe('SlackAlertService Integration', () => {
   });
 
   it('deve enviar um alerta de teste para o Slack', async () => {
-    const alerta: Alerta = {
-      servico: 'servico-teste',
-      erro: {
-        tipo: 'ReferenceError',
-        mensagem: 'y is not defined'
+    const alertInput: AlertInput = {
+      service: 'servico-teste',
+      error: {
+        type: 'ReferenceError',
+        message: 'y is not defined'
       },
-      codigo: {
+      code: {
         arquivo: 'index.ts',
         linha: 10,
         codigo: 'const x = y + 1;',
@@ -39,7 +39,7 @@ describe('SlackAlertService Integration', () => {
         branch: 'main',
         url: 'https://github.com/teste/repo/blob/main/index.ts#L10'
       },
-      analise: {
+      analysis: {
         causa: 'Variável y não foi definida',
         verificacoesAusentes: ['Verificação de variável definida'],
         sugestaoCorrecao: 'Defina a variável y antes de usá-la',
@@ -47,22 +47,22 @@ describe('SlackAlertService Integration', () => {
         nivelConfianca: 95
       },
       timestamp: new Date().toISOString(),
-      nivel: 'error'
+      level: 'error'
     };
 
     const alertPayload = {
-      timestamp: new Date(alerta.timestamp),
-      type: alerta.nivel === 'critical' ? 'error' : alerta.nivel,
-      title: `Alerta de ${alerta.servico}: ${alerta.erro.tipo}`,
-      message: alerta.erro.mensagem,
+      timestamp: new Date(alertInput.timestamp),
+      type: alertInput.level === 'critical' ? 'error' : alertInput.level,
+      title: `Alert from ${alertInput.service}: ${alertInput.error.type}`,
+      message: alertInput.error.message,
       details: {
         error: {
-          type: alerta.erro.tipo,
-          message: alerta.erro.mensagem,
-          stackTrace: alerta.erro.stacktrace,
+          type: alertInput.error.type,
+          message: alertInput.error.message,
+          stackTrace: alertInput.error.stacktrace,
           context: {
-            codigo: alerta.codigo,
-            analise: alerta.analise,
+            code: alertInput.code,
+            analysis: alertInput.analysis,
           },
         },
       },

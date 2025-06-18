@@ -1,5 +1,5 @@
 import { SlackAlertAdapter } from '../SlackAlertAdapter';
-import { AnaliseIA } from '../../../../ai-prompting/domain/entities/AnaliseIA';
+import { AnaliseIA } from '../../../../ai-prompting/domain/entities/AnalyzeAI';
 import { Alert } from '../../../domain/ports/IAlertService';
 
 describe('SlackAlertAdapter', () => {

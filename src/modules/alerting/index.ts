@@ -1,6 +1,6 @@
 import { createLogger, format, transports } from 'winston';
 import { SlackAlertService } from './infrastructure/SlackAlertService';
-import { SendAlertUseCase } from './application/use-cases/EnviarAlertaUseCase';
+import { SendAlertUseCase } from './application/use-cases/SendAlertUseCase';
 import { config } from './config/config';
 
 // Configuração do logger
