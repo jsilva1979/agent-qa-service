@@ -1,9 +1,9 @@
 import { IAIService, AnalysisData, CodeAnalysis } from '../IAIService';
-import { AnaliseIA } from '../../entities/AnalyzeAI';
+import { AnalyzeAI } from '../../entities/AnalyzeAI';
 
 // Classe mock para testar a interface
 class MockAIService implements IAIService {
-  async analyzeError(data: AnalysisData): Promise<AnaliseIA> {
+  async analyzeError(data: AnalysisData): Promise<AnalyzeAI> {
     return {
       id: 'mock-id',
       timestamp: new Date(),

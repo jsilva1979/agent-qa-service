@@ -19,6 +19,7 @@ build/
 .vscode/
 *.swp
 *.swo
+.cursor/rules
 
 # OS
 .DS_Store

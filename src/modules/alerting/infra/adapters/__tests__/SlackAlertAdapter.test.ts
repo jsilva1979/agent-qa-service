@@ -1,5 +1,5 @@
 import { SlackAlertAdapter } from '../SlackAlertAdapter';
-import { AnaliseIA } from '../../../../ai-prompting/domain/entities/AnalyzeAI';
+import { AnalyzeAI } from '../../../../ai-prompting/domain/entities/AnalyzeAI';
 import { Alert } from '../../../domain/ports/IAlertService';
 
 describe('SlackAlertAdapter', () => {
@@ -84,7 +84,7 @@ describe('SlackAlertAdapter', () => {
         stackTrace: 'at Object.process (test.js:10:5)',
       };
 
-      const analysis: AnaliseIA = {
+      const analysis: AnalyzeAI = {
         id: '1',
         timestamp: new Date(),
         erro: {
@@ -113,7 +113,7 @@ describe('SlackAlertAdapter', () => {
     });
 
     it('should throw an error when error is undefined', async () => {
-      const analysis: AnaliseIA = {
+      const analysis: AnalyzeAI = {
         id: '1',
         timestamp: new Date(),
         erro: {

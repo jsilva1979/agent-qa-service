@@ -1,5 +1,5 @@
 import { IAlertService, Alert } from '../../domain/ports/IAlertService';
-import { AnaliseIA } from '../../../ai-prompting/domain/entities/AnalyzeAI';
+import { AnalyzeAI } from '../../../ai-prompting/domain/entities/AnalyzeAI';
 import { WebClient } from '@slack/web-api';
 import winston from 'winston';
 import crypto from 'crypto';
@@ -56,7 +56,7 @@ export class SlackAlertAdapter implements IAlertService {
     }
   }
 
-  async sendErrorAlert(error: Alert['details']['error'], analysis: AnaliseIA): Promise<string> {
+  async sendErrorAlert(error: Alert['details']['error'], analysis: AnalyzeAI): Promise<string> {
     try {
       const alertId = crypto.randomUUID();
       const alert: Omit<Alert, 'id' | 'metadata'> = {
@@ -128,7 +128,7 @@ export class SlackAlertAdapter implements IAlertService {
     return `*${alert.title}*\n${alert.message}`;
   }
 
-  private formatErrorAlertMessage(alert: Omit<Alert, 'id' | 'metadata'>, analysis: AnaliseIA): string {
+  private formatErrorAlertMessage(alert: Omit<Alert, 'id' | 'metadata'>, analysis: AnalyzeAI): string {
     return `
 *🚨 ${alert.title}*
 
@@ -168,7 +168,7 @@ ${alert.message}
     ];
   }
 
-  private createErrorAlertBlocks(alert: Omit<Alert, 'id' | 'metadata'>, analysis: AnaliseIA): any[] {
+  private createErrorAlertBlocks(alert: Omit<Alert, 'id' | 'metadata'>, analysis: AnalyzeAI): any[] {
     return [
       {
         type: 'section',
