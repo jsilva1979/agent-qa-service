@@ -17,7 +17,7 @@ export interface LogEntry {
   id: string;
   created_at: string;
   content: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   embedding?: number[];
 }
 
@@ -27,6 +27,6 @@ export interface Analysis {
   log_id: string;
   analysis_type: string;
   content: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   embedding?: number[];
 } 

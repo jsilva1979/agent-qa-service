@@ -1,11 +1,14 @@
 import express, { Request, Response } from 'express';
-import { IApiServer } from '../domain/ports/IApiServer';
-import { LogEntry } from '../../log-analysis/domain/entities/LogEntry';
 import { Logger } from 'winston';
 
-export class ExpressApiServer implements IApiServer {
+export interface LogEntry {
+  // Defina os campos necessários conforme uso real
+  [key: string]: unknown;
+}
+
+export class ExpressApiServer {
   private app: express.Application;
-  private server: any;
+  private server: import('http').Server | undefined;
 
   constructor(
     private readonly logger: Logger
@@ -40,8 +43,45 @@ export class ExpressApiServer implements IApiServer {
       }
     });
 
+    // Rota para interações do Slack (botões)
+    this.app.post('/slack/interactions', async (req: Request, res: Response) => {
+      try {
+        // Log detalhado do payload recebido
+        console.log('Payload recebido do Slack:', req.body);
+        // O Slack envia o payload como application/x-www-form-urlencoded
+        const payload = typeof req.body.payload === 'string' ? JSON.parse(req.body.payload) : req.body.payload;
+        const action = payload?.actions?.[0];
+        const actionId = action?.action_id;
+        const alertId = action?.value;
+
+        this.logger.info('Interação recebida do Slack', { actionId, alertId });
+
+        // Buscar detalhes da análise pelo ID (mock)
+        // Em produção, buscar do banco/cache
+        const analysisDetails = {
+          id: alertId,
+          summary: 'Resumo da análise de erro',
+          logs: ['log1', 'log2'],
+          screenshotUrl: 'https://exemplo.com/print.png',
+        };
+
+        // Criar card no Jira (mock)
+        // Em produção, chamar serviço real
+        const jiraIssueKey = 'TM-456';
+
+        // Responder ao Slack (mensagem efêmera para o usuário)
+        res.json({
+          response_type: 'ephemeral',
+          text: `Card criado: ${jiraIssueKey} ✅`,
+        });
+      } catch (error) {
+        this.logger.error('Erro ao processar interação do Slack', { error });
+        res.status(500).json({ error: 'Erro ao processar interação do Slack' });
+      }
+    });
+
     // Middleware de tratamento de erros
-    this.app.use((err: Error, req: Request, res: Response, next: Function) => {
+    this.app.use((err: Error, req: Request, res: Response, _next: express.NextFunction) => {
       this.logger.error('Erro não tratado', { error: err });
       res.status(500).json({ error: 'Erro interno do servidor' });
     });
@@ -59,7 +99,7 @@ export class ExpressApiServer implements IApiServer {
   async parar(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.server) {
-        this.server.close((err: Error) => {
+        this.server.close((err?: Error | undefined) => {
           if (err) {
             this.logger.error('Erro ao parar servidor', { error: err });
             reject(err);

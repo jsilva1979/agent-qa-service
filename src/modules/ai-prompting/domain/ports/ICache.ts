@@ -1,28 +1,29 @@
-import { AnalyzeAI } from '@/modules/ai-prompting/domain/entities/AnalyzeAI';
-import { AnalysisData } from './IAIService';
+/**
+ * @fileoverview Define a interface para serviços de cache.
+ * @version 1.0.0
+ * @since 2024-07-26
+ * @author Jefferson Silva
+ */
 
 export interface ICache {
   /**
-   * Obtém uma análise do cache
-   * @param dados Dados do erro para buscar no cache
-   * @returns Promise com a análise em cache ou null se não encontrada
+   * Obtém um valor do cache com base em uma chave.
+   * @param key A chave para buscar o valor.
+   * @returns O valor armazenado ou nulo se não encontrado.
    */
-  get(dados: AnalysisData): Promise<AnalyzeAI | null>;
+  get(key: string): Promise<any | null>;
 
   /**
-   * Armazena uma análise no cache
-   * @param dados Dados do erro
-   * @param analise Análise a ser armazenada
+   * Armazena um valor no cache com um tempo de expiração opcional.
+   * @param key A chave para armazenar o valor.
+   * @param value O valor a ser armazenado.
+   * @param ttl O tempo de vida em segundos (opcional).
    */
-  set(dados: AnalysisData, analise: AnalyzeAI): Promise<void>;
+  set(key: string, value: any, ttl?: number): Promise<void>;
 
   /**
-   * Limpa todo o cache
+   * Remove um valor do cache com base em uma chave.
+   * @param key A chave do valor a ser removido.
    */
-  clear(): Promise<void>;
-
-  /**
-   * Encerra a conexão com o cache
-   */
-  disconnect(): Promise<void>;
+  del(key: string): Promise<void>;
 } 

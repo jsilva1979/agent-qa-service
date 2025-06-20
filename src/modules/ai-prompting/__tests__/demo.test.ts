@@ -126,15 +126,15 @@ describe('Demonstração do GeminiAIService', () => {
     });
 
     console.log('\n=== Demonstração 3: Análise de Erro em Tempo de Execução ===');
-    console.log('Erro Analisado:', analise.erro);
+    console.log('Erro Analisado:', analise.error);
     console.log('\nAnálise do Gemini:');
-    console.log('Causa Raiz:', analise.resultado.causaRaiz);
+    console.log('Causa Raiz:', analise.result.rootCause);
     console.log('\nSugestões de Correção:');
-    analise.resultado.sugestoes.forEach((sugestao, index) => {
-      console.log(`${index + 1}. ${sugestao}`);
+    analise.result.suggestions.forEach((suggestion, index) => {
+      console.log(`${index + 1}. ${suggestion}`);
     });
-    console.log('\nNível de Confiança:', analise.resultado.nivelConfianca);
-    console.log('Categoria:', analise.resultado.categoria);
-    console.log('Tags:', analise.resultado.tags.join(', '));
+    console.log('\nNível de Confiança:', analise.result.confidenceLevel);
+    console.log('Categoria:', analise.result.category);
+    console.log('Tags:', analise.result.tags.join(', '));
   }, 30000);
 }); 

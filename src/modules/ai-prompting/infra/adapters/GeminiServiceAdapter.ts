@@ -2,25 +2,102 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { IAIService, AnalysisData, CodeAnalysis } from '../../domain/ports/IAIService';
 import { AnalyzeAI } from '../../domain/entities/AnalyzeAI';
 import { Logger } from 'winston';
-import crypto from 'crypto';
+import { ICache } from '../../domain/ports/ICache';
+import * as crypto from 'crypto';
 
 export class GeminiServiceAdapter implements IAIService {
-  private readonly genAI: GoogleGenerativeAI;
-  private readonly model: any;
+  private genAI: GoogleGenerativeAI;
+  private logger: Logger;
+  private modelName: string;
+  private cache?: ICache;
+  private generativeModel: any;
 
   constructor(
-    private readonly logger: Logger,
+    logger: Logger,
     apiKey: string,
-    model: string = 'gemini-2.0-flash'
+    modelName: string,
+    cache?: ICache,
   ) {
+    this.logger = logger;
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model });
+    this.modelName = modelName;
+    this.cache = cache;
+    this.generativeModel = this.genAI.getGenerativeModel({ model: this.modelName });
+  }
+
+  public async analyzeError(input: AnalysisData): Promise<AnalyzeAI> {
+    const shouldCache = false; // Manter cache desativado por enquanto
+    
+    if (this.cache && shouldCache) {
+      const cacheKey = `analysis:${crypto.createHash('md5').update(JSON.stringify(input)).digest('hex')}`;
+      const cachedResult = await this.cache.get(cacheKey);
+      if (cachedResult) {
+        this.logger.info('Análise obtida do cache');
+        return cachedResult as AnalyzeAI;
+      }
+    }
+
+    try {
+      const prompt = `
+        Análise de Erro de Software
+        ===========================
+        Por favor, analise o seguinte erro e forneça uma análise detalhada.
+        Erro:
+        - Tipo: ${input.error.type}
+        - Mensagem: ${input.error.message}
+        - Stack Trace: ${input.error.stackTrace || 'N/A'}
+        Análise Solicitada:
+        - ROOT_CAUSE: Descreva a causa raiz em uma frase.
+        - SUGGESTIONS: Forneça sugestões de correção em uma lista.
+        - CATEGORY: Classifique como [API, Database, Network, UI, Logic, Other].
+        - IMPACT: Avalie como [LOW, MEDIUM, HIGH, CRITICAL].
+      `;
+      
+      const result = await this.generativeModel.generateContent(prompt);
+      const texto = result.response.text();
+
+      const analysis: AnalyzeAI = {
+        id: crypto.randomUUID(),
+        timestamp: new Date(),
+        error: { ...input.error },
+        result: {
+          rootCause: this.extrairCampo(texto, 'ROOT_CAUSE'),
+          suggestions: this.extrairCampo(texto, 'SUGGESTIONS').split('\n').map(s => s.trim()).filter(Boolean),
+          confidenceLevel: 0.9,
+          category: this.extrairCampo(texto, 'CATEGORY'),
+          impact: this.extrairCampo(texto, 'IMPACT'),
+          tags: [],
+          references: [],
+        },
+        metadata: {
+          model: this.modelName,
+          version: '1.0',
+          processingTime: 0,
+          tokensUsed: texto.length, 
+        }
+      };
+
+      if (this.cache && shouldCache) {
+        const cacheKey = `analysis:${crypto.createHash('md5').update(JSON.stringify(input)).digest('hex')}`;
+        await this.cache.set(cacheKey, analysis, 3600);
+      }
+
+      return analysis;
+    } catch (error) {
+      this.logger.error('Erro ao analisar erro com Gemini', { error, input });
+      throw error;
+    }
+  }
+
+  private extrairCampo(texto: string, campo: string): string {
+    const regex = new RegExp(`${campo}:\\s*(.+)`);
+    const match = texto.match(regex);
+    return match ? match[1].trim() : `Unknown ${campo}`;
   }
 
   async checkAvailability(): Promise<boolean> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: this.model });
-      await model.generateContent('Teste de disponibilidade');
+      await this.genAI.getGenerativeModel({ model: this.modelName }).generateContent('Teste de disponibilidade');
       return true;
     } catch (error) {
       this.logger.error('Erro ao verificar disponibilidade do Gemini', { error });
@@ -38,8 +115,7 @@ export class GeminiServiceAdapter implements IAIService {
       const processingStartTime = Date.now();
       
       const prompt = this.prepareCodePrompt(sourceCode, file, line, error);
-      const response = await this.model.generateContent(prompt);
-      const text = response.response.text();
+      const response = await this.generativeModel.generateContent(prompt);
 
       const analysis: CodeAnalysis = {
         id: crypto.randomUUID(),
@@ -48,18 +124,18 @@ export class GeminiServiceAdapter implements IAIService {
         line: line,
         error: error,
         result: {
-          rootCause: this.extractRootCause(text),
-          suggestions: this.extractSuggestions(text),
-          confidenceLevel: this.calculateConfidenceLevel(text),
-          category: this.extractCategory(text),
-          tags: this.extractTags(text),
-          references: this.extractReferences(text)
+          rootCause: this.extractRootCause(response.response.text()),
+          suggestions: this.extractSuggestions(response.response.text()),
+          confidenceLevel: this.calculateConfidenceLevel(response.response.text()),
+          category: this.extractCategory(response.response.text()),
+          tags: this.extractTags(response.response.text()),
+          references: this.extractReferences(response.response.text())
         },
         metadata: {
-          model: this.model.model,
+          model: this.modelName,
           version: '2.0-flash',
           processingTime: Date.now() - processingStartTime,
-          tokensUsed: this.countTokens(text)
+          tokensUsed: this.countTokens(response.response.text())
         }
       };
 
@@ -105,104 +181,31 @@ export class GeminiServiceAdapter implements IAIService {
   }
 
   private extractRootCause(text: string): string {
-    // Implementar lógica de extração da causa raiz
     return text.split('\n')[0];
   }
 
   private extractSuggestions(text: string): string[] {
-    // Implementar lógica de extração das sugestões
     return text.split('\n').filter(line => line.startsWith('- '));
   }
 
-  private calculateConfidenceLevel(text: string): number {
-    // Implementar lógica de cálculo do nível de confiança
+  private calculateConfidenceLevel(_: string): number {
     return 0.8;
   }
 
-  private extractCategory(text: string): string {
-    // Implementar lógica de extração da categoria
+  private extractCategory(_: string): string {
     return 'Erro de Sistema';
   }
 
-  private extractTags(text: string): string[] {
-    // Implementar lógica de extração das tags
+  private extractTags(_: string): string[] {
     return ['erro', 'sistema'];
   }
 
-  private extractReferences(text: string): string[] {
-    // Implementar lógica de extração das referências
+  private extractReferences(_: string): string[] {
     return [];
   }
 
   private countTokens(text: string): number {
-    // Implementar lógica de contagem de tokens
     return text.split(/\s+/).length;
-  }
-
-  async analyzeError(data: AnalysisData): Promise<AnalyzeAI> {
-    try {
-      const model = this.genAI.getGenerativeModel({ model: this.model });
-      const prompt = `
-Você é um engenheiro de QA autônomo.
-
-Analise o seguinte erro e forneça uma análise detalhada:
-
-Tipo: ${data.error.type}
-Mensagem: ${data.error.message}
-Stack Trace: ${data.error.stackTrace || 'N/A'}
-
-Código:
-\`\`\`
-${data.code}
-\`\`\`
-
-Logs:
-${data.logs?.join('\n') || 'N/A'}
-
-Métricas:
-CPU: ${data.metrics?.cpu || 'N/A'}%
-Memória: ${data.metrics?.memory || 'N/A'}%
-Latência: ${data.metrics?.latency || 'N/A'}ms
-
-Contexto:
-${JSON.stringify(data.context || {}, null, 2)}
-`;
-
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-
-      // Parseia a resposta do Gemini para o formato AnalyzeAI
-      const lines = text.split('\n');
-      
-      return {
-        id: crypto.randomUUID(),
-        timestamp: new Date(),
-        erro: {
-          tipo: data.error.type,
-          mensagem: data.error.message,
-          stackTrace: data.error.stackTrace,
-          contexto: data.error.context,
-        },
-        resultado: {
-          causaRaiz: lines[0] || 'Causa não identificada',
-          nivelConfianca: 0.8,
-          sugestoes: lines.slice(1).filter(l => l.trim().startsWith('-')),
-          referencias: [],
-          tags: [],
-          categoria: 'erro'
-        },
-        metadados: {
-          modelo: this.model.model,
-          versao: '1.0',
-          tempoProcessamento: 0,
-          tokensUtilizados: 0
-        }
-      };
-    } catch (error) {
-      this.logger.error('Erro ao analisar erro com Gemini', { error, data });
-      throw error;
-    }
   }
 
   async getModelInfo(): Promise<{
@@ -217,5 +220,28 @@ ${JSON.stringify(data.context || {}, null, 2)}
       capabilities: ['Mock capacidade'],
       limitations: ['Mock limitação'],
     };
+  }
+
+  async generateContent(prompt: string): Promise<string> {
+    try {
+      // Tentar buscar do cache primeiro
+      if (this.cache) {
+        const cached = await this.cache.get(prompt);
+        if (cached) return cached;
+      }
+
+      const result = await this.generativeModel.generateContent(prompt);
+      const response = result.response.text();
+
+      // Salvar no cache se disponível
+      if (this.cache) {
+        await this.cache.set(prompt, response);
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Erro ao gerar conteúdo com Gemini:', error);
+      throw error;
+    }
   }
 } 

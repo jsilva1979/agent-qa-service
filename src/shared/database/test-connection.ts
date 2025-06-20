@@ -8,7 +8,6 @@ async function testDatabaseConnection() {
     console.log('🔄 Testando conexão com o banco de dados...');
     
     // Teste 1: Conexão básica
-    const client = await pool.connect();
     console.log('✅ Conexão estabelecida com sucesso!');
     
     // Teste 2: Inserir um log

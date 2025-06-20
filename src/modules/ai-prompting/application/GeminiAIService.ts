@@ -5,6 +5,7 @@ import { ICache } from '../domain/ports/ICache';
 import { config } from '../config/config';
 import winston from 'winston';
 import crypto from 'crypto';
+import { GeminiServiceAdapter } from '../infra/adapters/GeminiServiceAdapter';
 
 interface GeminiResponse {
   candidates: Array<{
@@ -25,7 +26,7 @@ interface RetryConfig {
 
 export class GeminiAIService implements IAIService {
   private genAI: GoogleGenerativeAI;
-  private model: any;
+  private model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>;
   private logger: winston.Logger;
   private modelName: string;
   private retryConfig: RetryConfig;
@@ -42,6 +43,7 @@ export class GeminiAIService implements IAIService {
       };
       retry?: RetryConfig;
     },
+    private readonly geminiService: GeminiServiceAdapter,
     private readonly cache?: ICache
   ) {
     this.genAI = new GoogleGenerativeAI(aiConfig.apiKey);
@@ -142,14 +144,41 @@ export class GeminiAIService implements IAIService {
     );
   }
 
+  private extrairCampo(texto: string, campo: string): string {
+    const regex = new RegExp(`${campo}:\\s*(.+)`, 'i');
+    const match = texto.match(regex);
+    return match ? match[1].trim() : '';
+  }
+
+  private extrairCausaRaiz(texto: string): string {
+    return this.extrairCampo(texto, 'ROOT_CAUSE');
+  }
+
+  private extrairSugestoes(texto: string): string[] {
+    const sugestoesTexto = this.extrairCampo(texto, 'SUGGESTIONS');
+    return sugestoesTexto.split(/\\n-?\s*/).map(s => s.trim()).filter(Boolean);
+  }
+
+  private extrairCategoria(texto: string): string {
+    return this.extrairCampo(texto, 'CATEGORY') || 'Other';
+  }
+
+  private extrairImpacto(texto: string): string {
+    const impacto = this.extrairCampo(texto, 'IMPACT').toUpperCase();
+    const niveisValidos = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    return niveisValidos.includes(impacto) ? impacto : 'MEDIUM';
+  }
+
   async analyzeError(data: AnalysisData): Promise<AnalyzeAI> {
+    const cacheKey = `analysis:${data.error.message}`;
+    const shouldCache = false;
+
     try {
-      // Tenta obter do cache primeiro
-      if (this.cache) {
-        const cached = await this.cache.get(data);
+      if (this.cache && shouldCache) {
+        const cached = await this.cache.get(cacheKey);
         if (cached) {
           this.logger.info('Análise obtida do cache');
-          return cached;
+          return cached as AnalyzeAI;
         }
       }
 
@@ -157,34 +186,37 @@ export class GeminiAIService implements IAIService {
       const prompt = this.prepararPrompt(data);
       const texto = await this.callGeminiAPI(prompt);
 
+      // Log da resposta crua da IA para depuração
+      this.logger.debug('Resposta crua do Gemini:', { texto });
+
       const analise: AnalyzeAI = {
         id: crypto.randomUUID(),
         timestamp: new Date(),
-        erro: {
-          tipo: data.error.type,
-          mensagem: data.error.message,
+        error: {
+          type: data.error.type,
+          message: data.error.message,
           stackTrace: data.error.stackTrace,
-          contexto: data.error.context
+          context: data.error.context,
         },
-        resultado: {
-          causaRaiz: this.extrairCausaRaiz(texto),
-          sugestoes: this.extrairSugestoes(texto),
-          nivelConfianca: this.calcularNivelConfianca(texto),
-          categoria: this.extrairCategoria(texto),
-          tags: this.extrairTags(texto),
-          referencias: this.extrairReferencias(texto),
+        result: {
+          rootCause: this.extrairCausaRaiz(texto),
+          suggestions: this.extrairSugestoes(texto),
+          confidenceLevel: 0.9, // Usando valor padrão por enquanto
+          category: this.extrairCategoria(texto),
+          tags: [], // Tags não são mais extraídas
+          references: [], // Referências não são mais extraídas
+          impact: this.extrairImpacto(texto)
         },
-        metadados: {
-          modelo: 'Gemini',
-          versao: this.modelName,
-          tempoProcessamento: Date.now() - inicioProcessamento,
-          tokensUtilizados: this.contarTokens(texto),
+        metadata: {
+          model: 'Gemini',
+          version: this.modelName,
+          processingTime: Date.now() - inicioProcessamento,
+          tokensUsed: this.contarTokens(texto),
         },
       };
 
-      // Armazena no cache se disponível
       if (this.cache) {
-        await this.cache.set(data, analise);
+        await this.cache.set(cacheKey, analise);
       }
 
       return analise;
@@ -214,7 +246,7 @@ export class GeminiAIService implements IAIService {
         result: {
           rootCause: this.extrairCausaRaiz(texto),
           suggestions: this.extrairSugestoes(texto),
-          confidenceLevel: this.calcularNivelConfianca(texto),
+          confidenceLevel: 0.9, // Usando valor padrão por enquanto
           category: this.extrairCategoria(texto),
           tags: this.extrairTags(texto),
           references: this.extrairReferencias(texto),
@@ -286,39 +318,40 @@ export class GeminiAIService implements IAIService {
   }
 
   private prepararPrompt(data: AnalysisData): string {
-    return `Você é um engenheiro de QA autônomo especializado em análise de erros e debugging.
+    const { error, code } = data;
+    const context = error.context ? `Contexto adicional: ${error.context}` : '';
 
-Contexto do erro:
-- Tipo: ${data.error.type}
-- Mensagem: ${data.error.message}
-${data.error.stackTrace ? `- Stack Trace:\n${data.error.stackTrace}` : ''}
-${data.error.context ? `- Contexto adicional:\n${JSON.stringify(data.error.context, null, 2)}` : ''}
+    return `
+      Análise de Erro de Software
+      ===========================
 
-${data.logs ? `Logs relevantes:\n${data.logs.join('\n')}` : ''}
+      Por favor, analise o seguinte erro e forneça uma análise detalhada.
 
-${data.metrics ? `Métricas do sistema:\n${JSON.stringify(data.metrics, null, 2)}` : ''}
+      Erro
+      ----
+      Tipo: ${error.type}
+      Mensagem: ${error.message}
+      Stack Trace:
+      \`\`\`
+      ${error.stackTrace}
+      \`\`\`
 
-Por favor, forneça uma análise detalhada seguindo este formato:
+      Código Relevante
+      ----------------
+      \`\`\`
+      ${code}
+      \`\`\`
+      ${context}
 
-1. CAUSA RAIZ:
-[Identifique a causa fundamental do erro]
+      Análise Solicitada
+      ------------------
+      Com base nos dados fornecidos, por favor, responda nos seguintes campos:
 
-2. SUGESTÕES DE CORREÇÃO:
-[Liste as sugestões de correção em ordem de prioridade]
-
-3. NÍVEL DE CONFIANÇA:
-[Indique um número entre 0 e 1 representando sua confiança na análise]
-
-4. CATEGORIA:
-[Classifique o erro em uma das seguintes categorias: Runtime, Logic, Resource, Network, Security, Data, Configuration, ou Other]
-
-5. TAGS:
-[Liste tags relevantes separadas por vírgula]
-
-6. REFERÊNCIAS:
-[Liste referências relevantes (documentação, padrões, etc.)]
-
-Por favor, seja específico e técnico em sua análise.`;
+      1. ROOT_CAUSE: Descreva a causa raiz do erro em uma frase.
+      2. SUGGESTIONS: Forneça uma lista de 2-3 sugestões claras e acionáveis para corrigir o erro.
+      3. CATEGORY: Classifique o erro em UMA das seguintes categorias: [API, Database, Network, UI, Security, Performance, Logic, Other].
+      4. IMPACT: Avalie o impacto potencial do erro como [LOW, MEDIUM, HIGH, CRITICAL].
+    `;
   }
 
   private prepararPromptCodigo(
@@ -361,51 +394,8 @@ Por favor, forneça uma análise detalhada seguindo este formato:
 Por favor, seja específico e técnico em sua análise.`;
   }
 
-  private extrairCausaRaiz(texto: string): string {
-    const match = texto.match(/1\. CAUSA RAIZ:\s*([\s\S]*?)(?=2\.|$)/i);
-    return match ? match[1].trim() : 'Causa raiz não identificada';
-  }
-
-  private extrairSugestoes(texto: string): string[] {
-    const match = texto.match(/2\. SUGESTÕES DE CORREÇÃO:\s*([\s\S]*?)(?=3\.|$)/i);
-    if (!match) return ['Sugestões não identificadas'];
-    
-    return match[1]
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line && !line.startsWith('-') && !line.startsWith('*'))
-      .map(line => line.replace(/^\d+\.\s*/, ''));
-  }
-
-  private calcularNivelConfianca(texto: string): number {
-    const match = texto.match(/3\. NÍVEL DE CONFIANÇA:\s*([\d.]+)/i);
-    if (!match) return 0.5;
-    
-    const nivel = parseFloat(match[1]);
-    return isNaN(nivel) ? 0.5 : Math.max(0, Math.min(1, nivel));
-  }
-
-  private extrairCategoria(texto: string): string {
-    const match = texto.match(/4\. CATEGORIA:\s*([\s\S]*?)(?=5\.|$)/i);
-    if (!match) return 'Other';
-    
-    const categoria = match[1].trim();
-    const categoriasValidas = [
-      'Runtime',
-      'Logic',
-      'Resource',
-      'Network',
-      'Security',
-      'Data',
-      'Configuration',
-      'Other'
-    ];
-    
-    return categoriasValidas.includes(categoria) ? categoria : 'Other';
-  }
-
   private extrairTags(texto: string): string[] {
-    const match = texto.match(/5\. TAGS:\s*([\s\S]*?)(?=6\.|$)/i);
+    const match = texto.match(/TAGS:\s*(.*)/i);
     if (!match) return [];
     
     return match[1]
@@ -427,5 +417,45 @@ Por favor, seja específico e técnico em sua análise.`;
   private contarTokens(texto: string): number {
     // Implementação simplificada - em produção, usar uma biblioteca específica
     return Math.ceil(texto.length / 4);
+  }
+
+  async analyze(prompt: string): Promise<any> {
+    try {
+      const response = await this.geminiService.generateContent(prompt);
+      return this.parseAnalysisResponse(response);
+    } catch (error) {
+      console.error('Erro ao analisar com IA:', error);
+      throw error;
+    }
+  }
+
+  private parseAnalysisResponse(response: string): any {
+    try {
+      // Tenta extrair informações estruturadas da resposta
+      const lines = response.split('\n');
+      const analysis: Record<string, any> = {};
+
+      for (const line of lines) {
+        if (line.includes('Tipo de erro:')) {
+          analysis.errorType = line.split(':')[1].trim();
+        } else if (line.includes('Nível de impacto:')) {
+          analysis.impactLevel = line.split(':')[1].trim();
+        } else if (line.includes('Causa raiz:')) {
+          analysis.rootCause = line.split(':')[1].trim();
+        } else if (line.includes('Sugestões:')) {
+          analysis.suggestions = line.split(':')[1].trim();
+        }
+      }
+
+      return analysis;
+    } catch (error) {
+      console.error('Erro ao parsear resposta da IA:', error);
+      return {
+        errorType: 'Unknown',
+        impactLevel: 'MEDIUM',
+        rootCause: 'Não foi possível determinar',
+        suggestions: []
+      };
+    }
   }
 } 

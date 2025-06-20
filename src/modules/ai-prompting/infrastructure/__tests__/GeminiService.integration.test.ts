@@ -1,9 +1,17 @@
 import 'dotenv/config';
 import { GeminiService } from '../GeminiService';
-import { CodeContext } from '../../../github-access/domain/CodeContext';
 
 describe('GeminiService Integration', () => {
   let geminiService: GeminiService;
+
+  type CodeContext = {
+    arquivo: string;
+    linha: number;
+    codigo: string;
+    repositorio: string;
+    branch: string;
+    url: string;
+  };
 
   beforeAll(() => {
     geminiService = new GeminiService();
@@ -32,8 +40,20 @@ describe('GeminiService Integration', () => {
     };
 
     const resultado = await geminiService.analyzeError(analysisData);
-    expect(resultado).toHaveProperty('causa');
-    expect(resultado).toHaveProperty('sugestaoCorrecao');
-    expect(resultado).toHaveProperty('explicacao');
+    expect(resultado).toHaveProperty('result');
+    expect(resultado.result).toHaveProperty('rootCause');
+    expect(resultado.result).toHaveProperty('suggestions');
+    expect(resultado.result).toHaveProperty('confidenceLevel');
+    expect(resultado.result).toHaveProperty('category');
+    expect(resultado.result).toHaveProperty('tags');
+    expect(resultado.result).toHaveProperty('references');
+    expect(resultado).toHaveProperty('error');
+    expect(resultado.error).toHaveProperty('type');
+    expect(resultado.error).toHaveProperty('message');
+    expect(resultado).toHaveProperty('metadata');
+    expect(resultado.metadata).toHaveProperty('model');
+    expect(resultado.metadata).toHaveProperty('version');
+    expect(resultado.metadata).toHaveProperty('processingTime');
+    expect(resultado.metadata).toHaveProperty('tokensUsed');
   }, 20000);
 }); 

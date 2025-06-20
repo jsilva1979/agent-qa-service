@@ -100,7 +100,7 @@ export interface AnalysisData {
     type: string;
     message: string;
     stackTrace?: string;
-    context?: Record<string, any>;
+    context?: Record<string, unknown>;
   };
 
   /**
@@ -120,7 +120,7 @@ export interface AnalysisData {
   /**
    * Contexto adicional do erro
    */
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 export interface IAIService {

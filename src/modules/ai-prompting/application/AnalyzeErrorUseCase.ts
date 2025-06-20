@@ -1,33 +1,60 @@
 import { IAIService } from '../domain/ports/IAIService';
-import { AnalyzeError } from '../domain/AnalyzeError';
-import { CodeContext } from '../../github-access/domain/CodeContext';
+import { AnalyzeAI } from '../domain/entities/AnalyzeAI';
+
+export interface ErrorInput {
+  tipo: string;
+  mensagem: string;
+  stackTrace?: string;
+  contexto?: Record<string, unknown>;
+}
+
+export interface CodeContext {
+  arquivo: string;
+  linha: number;
+  codigo: string;
+  repositorio: string;
+  branch: string;
+  url: string;
+}
 
 export class AnalyzeErrorUseCase {
   constructor(private readonly aiService: IAIService) { }
 
-async execute(
-    codigo: CodeContext,
-    erro: { tipo: string; mensagem: string; stackTrace?: string; contexto?: Record<string, any> }
-  ): Promise<AnalyzeError> {
+  async execute(erro: ErrorInput, codigo: CodeContext): Promise<{
+    causa: string;
+    verificacoesAusentes: string[];
+    sugestaoCorrecao: string;
+    explicacao: string;
+    nivelConfianca: number;
+  }> {
     // Validar os parâmetros de entrada
     if (!codigo || !erro || !erro.tipo || !erro.mensagem) {
       throw new Error('Parâmetros inválidos para análise de erro');
     }
 
     // Chamar o serviço de IA para analisar o erro
-    const analise = await this.aiService.analyzeError(codigo, erro);
+    const analise: AnalyzeAI = await this.aiService.analyzeError({
+      code: codigo.codigo,
+      error: {
+        type: erro.tipo,
+        message: erro.mensagem,
+        stackTrace: erro.stackTrace,
+        context: erro.contexto,
+      },
+    });
 
     // Validar o resultado da análise
-    if (!analise || !analise.resultado) {
+    if (!analise || !analise.result) {
       throw new Error('Análise de erro falhou ou retornou resultado inválido');
     }
 
     // Retornar a análise formatada
     return {
-      causa: analise.resultado.causaRaiz,
-      verificacoesAusentes: analise.resultado.sugestoes,
-      sugestaoCorrecao: analise.resultado.sugestoes.join(', '),
-      explicacao: `O erro "${erro.tipo}" ocorreu porque ${analise.resultado.causaRaiz}. Sugestões: ${analise.resultado.sugestoes.join(', ')}`,
-      nivelConfianca: analise.resultado.nivelConfianca * 100, // Convertendo para 0-100
+      causa: analise.result.rootCause,
+      verificacoesAusentes: analise.result.suggestions,
+      sugestaoCorrecao: analise.result.suggestions.join(', '),
+      explicacao: `O erro "${erro.tipo}" ocorreu porque ${analise.result.rootCause}. Sugestões: ${analise.result.suggestions.join(', ')}`,
+      nivelConfianca: analise.result.confidenceLevel * 100, // Convertendo para 0-100
     };
   }
+}

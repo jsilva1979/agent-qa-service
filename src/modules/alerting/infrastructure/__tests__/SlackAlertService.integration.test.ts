@@ -1,8 +1,6 @@
 import 'dotenv/config';
 import { SlackAlertService } from '../SlackAlertService';
 import { AlertInput } from '../../domain/AlertInput';
-import { AnalyzeError } from '../../../ai-prompting/domain/AnalyzeError';
-import { CodeContext } from '../../../github-access/domain/CodeContext';
 
 describe('SlackAlertService Integration', () => {
   let slackService: SlackAlertService;
@@ -40,11 +38,11 @@ describe('SlackAlertService Integration', () => {
         url: 'https://github.com/teste/repo/blob/main/index.ts#L10'
       },
       analysis: {
-        causa: 'Variável y não foi definida',
-        verificacoesAusentes: ['Verificação de variável definida'],
-        sugestaoCorrecao: 'Defina a variável y antes de usá-la',
-        explicacao: 'O erro ocorre porque y não foi inicializada.',
-        nivelConfianca: 95
+        rootCause: 'Variável y não foi definida',
+        missingChecks: ['Verificação de variável definida'],
+        correctionSuggestion: 'Defina a variável y antes de usá-la',
+        explanation: 'O erro ocorre porque y não foi inicializada.',
+        confidenceLevel: 95
       },
       timestamp: new Date().toISOString(),
       level: 'error'

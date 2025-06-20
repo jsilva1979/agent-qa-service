@@ -1,31 +1,38 @@
 import { RedisCache } from '../RedisCache';
 import { AnalysisData } from '../../../domain/ports/IAIService';
 import { AnalyzeAI } from '../../../domain/entities/AnalyzeAI';
-import { createClient } from 'redis';
 
-// Mock do Redis client
+// Mock do módulo redis para testes
 jest.mock('redis', () => ({
-  createClient: jest.fn(() => ({
-    connect: jest.fn(),
-    on: jest.fn(),
+  createClient: () => ({
+    connect: jest.fn().mockResolvedValue(undefined),
     get: jest.fn(),
     set: jest.fn(),
-    flushAll: jest.fn(),
+    del: jest.fn(),
     quit: jest.fn(),
-  })),
+    flushAll: jest.fn(),
+    on: jest.fn(),
+  }),
 }));
 
 describe('RedisCache', () => {
+  let client: {
+    get: jest.Mock;
+    set: jest.Mock;
+    del: jest.Mock;
+    quit: jest.Mock;
+    flushAll: jest.Mock;
+    connect: jest.Mock;
+    on: jest.Mock;
+  };
   let cache: RedisCache;
   const mockConfig = {
     url: 'redis://localhost:6379',
-    ttl: 3600,
-    maxSize: 1000,
+    ttl: 60,
+    maxSize: 100,
     logging: {
       level: 'info',
-      file: {
-        path: 'logs/cache.log',
-      },
+      file: { path: 'logs/redis-error.log' },
     },
   };
 
@@ -47,54 +54,57 @@ describe('RedisCache', () => {
   const mockAnalise: AnalyzeAI = {
     id: '123',
     timestamp: new Date(),
-    erro: {
-      tipo: mockDados.error.type,
-      mensagem: mockDados.error.message,
+    error: {
+      type: mockDados.error.type,
+      message: mockDados.error.message,
       stackTrace: mockDados.error.stackTrace,
     },
-    resultado: {
-      causaRaiz: 'Objeto name está nulo',
-      sugestoes: ['Adicionar verificação if (name != null)'],
-      nivelConfianca: 0.9,
-      categoria: 'NullPointerException',
+    result: {
+      rootCause: 'Objeto name está nulo',
+      suggestions: ['Adicionar verificação if (name != null)'],
+      confidenceLevel: 0.9,
+      category: 'NullPointerException',
       tags: ['null-check', 'validation'],
-      referencias: ['https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html'],
+      references: ['https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html'],
     },
-    metadados: {
-      modelo: 'Gemini',
-      versao: '2.0-flash',
-      tempoProcessamento: 100,
-      tokensUtilizados: 150,
+    metadata: {
+      model: 'Gemini',
+      version: '2.0-flash',
+      processingTime: 100,
+      tokensUsed: 150,
     },
   };
 
+  // Função auxiliar para acessar o client privado apenas em testes
+  function getTestClient(instance: RedisCache) {
+    return (instance as unknown as { client: typeof client }).client;
+  }
+
   beforeEach(() => {
-    jest.clearAllMocks();
     cache = new RedisCache(mockConfig);
+    client = getTestClient(cache);
   });
 
   describe('get', () => {
     it('deve retornar null quando não há cache', async () => {
-      const mockClient = createClient() as any;
-      mockClient.get.mockResolvedValue(null);
+      client.get.mockResolvedValue(null);
 
       const result = await cache.get(mockDados);
       expect(result).toBeNull();
-      expect(mockClient.get).toHaveBeenCalledWith('analise:NullPointerException:Cannot read property of null');
+      expect(client.get).toHaveBeenCalledWith('analise:NullPointerException:Cannot read property of null');
     });
 
     it('deve retornar análise do cache quando existe', async () => {
-      const mockClient = createClient() as any;
-      mockClient.get.mockResolvedValue(JSON.stringify(mockAnalise));
+      const mockAnaliseComString = { ...mockAnalise, timestamp: mockAnalise.timestamp.toISOString() };
+      client.get.mockResolvedValue(JSON.stringify(mockAnaliseComString));
 
       const result = await cache.get(mockDados);
-      expect(result).toEqual(mockAnalise);
-      expect(mockClient.get).toHaveBeenCalledWith('analise:NullPointerException:Cannot read property of null');
+      expect(result).toEqual(mockAnaliseComString);
+      expect(client.get).toHaveBeenCalledWith('analise:NullPointerException:Cannot read property of null');
     });
 
     it('deve retornar null em caso de erro', async () => {
-      const mockClient = createClient() as any;
-      mockClient.get.mockRejectedValue(new Error('Redis error'));
+      client.get.mockRejectedValue(new Error('Redis error'));
 
       const result = await cache.get(mockDados);
       expect(result).toBeNull();
@@ -103,11 +113,10 @@ describe('RedisCache', () => {
 
   describe('set', () => {
     it('deve armazenar análise no cache com TTL', async () => {
-      const mockClient = createClient() as any;
-      mockClient.set.mockResolvedValue('OK');
+      client.set.mockResolvedValue('OK');
 
       await cache.set(mockDados, mockAnalise);
-      expect(mockClient.set).toHaveBeenCalledWith(
+      expect(client.set).toHaveBeenCalledWith(
         'analise:NullPointerException:Cannot read property of null',
         JSON.stringify(mockAnalise),
         { EX: mockConfig.ttl }
@@ -115,8 +124,7 @@ describe('RedisCache', () => {
     });
 
     it('deve lidar com erro ao armazenar no cache', async () => {
-      const mockClient = createClient() as any;
-      mockClient.set.mockRejectedValue(new Error('Redis error'));
+      client.set.mockRejectedValue(new Error('Redis error'));
 
       await expect(cache.set(mockDados, mockAnalise)).resolves.not.toThrow();
     });
@@ -124,16 +132,14 @@ describe('RedisCache', () => {
 
   describe('clear', () => {
     it('deve limpar todo o cache', async () => {
-      const mockClient = createClient() as any;
-      mockClient.flushAll.mockResolvedValue('OK');
+      client.flushAll.mockResolvedValue('OK');
 
       await cache.clear();
-      expect(mockClient.flushAll).toHaveBeenCalled();
+      expect(client.flushAll).toHaveBeenCalled();
     });
 
     it('deve lidar com erro ao limpar cache', async () => {
-      const mockClient = createClient() as any;
-      mockClient.flushAll.mockRejectedValue(new Error('Redis error'));
+      client.flushAll.mockRejectedValue(new Error('Redis error'));
 
       await expect(cache.clear()).resolves.not.toThrow();
     });
@@ -141,16 +147,14 @@ describe('RedisCache', () => {
 
   describe('disconnect', () => {
     it('deve encerrar conexão com Redis', async () => {
-      const mockClient = createClient() as any;
-      mockClient.quit.mockResolvedValue('OK');
+      client.quit.mockResolvedValue('OK');
 
       await cache.disconnect();
-      expect(mockClient.quit).toHaveBeenCalled();
+      expect(client.quit).toHaveBeenCalled();
     });
 
     it('deve lidar com erro ao encerrar conexão', async () => {
-      const mockClient = createClient() as any;
-      mockClient.quit.mockRejectedValue(new Error('Redis error'));
+      client.quit.mockRejectedValue(new Error('Redis error'));
 
       await expect(cache.disconnect()).resolves.not.toThrow();
     });

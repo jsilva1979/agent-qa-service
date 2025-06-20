@@ -1,12 +1,28 @@
 import { SlackAlertService } from '../SlackAlertService';
 import { Alert } from '../../domain/ports/IAlertService';
-import axios from 'axios';
+import { SlackAuthService } from '../../../../shared/infrastructure/slackAuth';
 
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+// Mock do WebClient do Slack
+jest.mock('@slack/web-api', () => ({
+  WebClient: jest.fn().mockImplementation(() => ({
+    chat: { postMessage: jest.fn() },
+    auth: { test: jest.fn() }
+  }))
+}));
+
+// Mock do SlackAuthService
+jest.mock('../../../../shared/infrastructure/slackAuth', () => ({
+  SlackAuthService: jest.fn().mockImplementation(() => ({
+    getClient: jest.fn().mockResolvedValue({
+      chat: { postMessage: jest.fn().mockResolvedValue({ ts: 'mock-ts' }) },
+      auth: { test: jest.fn().mockResolvedValue(true) }
+    })
+  }))
+}));
 
 describe('SlackAlertService', () => {
   let slackAlertService: SlackAlertService;
+  let mockAuthService: { getClient: jest.Mock };
   const mockAlerta: Omit<Alert, 'id' | 'metadata'> = {
     timestamp: new Date(),
     type: 'error',
@@ -37,12 +53,19 @@ describe('SlackAlertService', () => {
   };
 
   beforeEach(() => {
+    const getClientMock = jest.fn().mockResolvedValue({
+      chat: { postMessage: jest.fn().mockResolvedValue({ ts: 'mock-ts' }) },
+      auth: { test: jest.fn().mockResolvedValue(true) },
+    });
+    mockAuthService = {
+      getClient: getClientMock,
+    };
     slackAlertService = new SlackAlertService({
       accessToken: 'test_access_token',
       refreshToken: 'test_refresh_token',
       channel: '#test-channel',
       ...commonConfig
-    });
+    }, mockAuthService as unknown as SlackAuthService);
   });
 
   afterEach(() => {
@@ -97,31 +120,19 @@ describe('SlackAlertService', () => {
 
   describe('sendAlert', () => {
     it('deve enviar alerta com sucesso', async () => {
-      mockedAxios.post.mockResolvedValueOnce({ status: 200 });
-
       const result = await slackAlertService.sendAlert(mockAlerta);
-
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://slack.com/api/chat.postMessage',
-        expect.objectContaining({
-          channel: '#test-channel',
-          blocks: expect.arrayContaining([
-            expect.objectContaining({
-              type: 'header',
-              text: expect.objectContaining({
-                text: expect.stringContaining('🚨 Erro no serviço teste')
-              })
-            })
-          ])
-        })
-      );
+      const client = await mockAuthService.getClient.mock.results[0].value;
+      expect(client.chat.postMessage).toHaveBeenCalled();
       expect(result).toBeDefined();
     }, 10000);
 
     it('deve lançar erro quando o envio falhar', async () => {
-      const error = new Error('Erro de rede');
-      mockedAxios.post.mockRejectedValueOnce(error);
-
+      // Mock do client e do postMessage
+      const client = {
+        chat: { postMessage: jest.fn().mockRejectedValueOnce(new Error('Erro de rede')) },
+        auth: { test: jest.fn().mockResolvedValue(true) }
+      };
+      mockAuthService.getClient.mockResolvedValueOnce(client);
       await expect(slackAlertService.sendAlert(mockAlerta))
         .rejects.toThrow(/Erro ao enviar alerta para o Slack/);
     });

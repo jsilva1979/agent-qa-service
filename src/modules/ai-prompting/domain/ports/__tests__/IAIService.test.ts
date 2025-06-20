@@ -7,25 +7,25 @@ class MockAIService implements IAIService {
     return {
       id: 'mock-id',
       timestamp: new Date(),
-      erro: {
-        tipo: data.error.type,
-        mensagem: data.error.message,
+      error: {
+        type: data.error.type,
+        message: data.error.message,
         stackTrace: data.error.stackTrace,
-        contexto: data.error.context,
+        context: data.error.context,
       },
-      resultado: {
-        causaRaiz: 'Mock causa raiz',
-        sugestoes: ['Mock sugestão'],
-        nivelConfianca: 0.8,
-        categoria: 'Mock categoria',
+      result: {
+        rootCause: 'Mock causa raiz',
+        suggestions: ['Mock sugestão'],
+        confidenceLevel: 0.8,
+        category: 'Mock categoria',
         tags: ['mock'],
-        referencias: ['mock-ref'],
+        references: ['mock-ref'],
       },
-      metadados: {
-        modelo: 'Mock Model',
-        versao: '1.0',
-        tempoProcessamento: 100,
-        tokensUtilizados: 50,
+      metadata: {
+        model: 'Mock Model',
+        version: '1.0',
+        processingTime: 100,
+        tokensUsed: 50,
       },
     };
   }
@@ -99,21 +99,21 @@ describe('IAIService', () => {
 
       expect(result).toHaveProperty('id');
       expect(result).toHaveProperty('timestamp');
-      expect(result).toHaveProperty('erro');
-      expect(result).toHaveProperty('resultado');
-      expect(result).toHaveProperty('metadados');
+      expect(result).toHaveProperty('error');
+      expect(result).toHaveProperty('result');
+      expect(result).toHaveProperty('metadata');
 
-      expect(result.resultado).toHaveProperty('causaRaiz');
-      expect(result.resultado).toHaveProperty('sugestoes');
-      expect(result.resultado).toHaveProperty('nivelConfianca');
-      expect(result.resultado).toHaveProperty('categoria');
-      expect(result.resultado).toHaveProperty('tags');
-      expect(result.resultado).toHaveProperty('referencias');
+      expect(result.result).toHaveProperty('rootCause');
+      expect(result.result).toHaveProperty('suggestions');
+      expect(result.result).toHaveProperty('confidenceLevel');
+      expect(result.result).toHaveProperty('category');
+      expect(result.result).toHaveProperty('tags');
+      expect(result.result).toHaveProperty('references');
 
-      expect(result.metadados).toHaveProperty('modelo');
-      expect(result.metadados).toHaveProperty('versao');
-      expect(result.metadados).toHaveProperty('tempoProcessamento');
-      expect(result.metadados).toHaveProperty('tokensUtilizados');
+      expect(result.metadata).toHaveProperty('model');
+      expect(result.metadata).toHaveProperty('version');
+      expect(result.metadata).toHaveProperty('processingTime');
+      expect(result.metadata).toHaveProperty('tokensUsed');
     });
   });
 

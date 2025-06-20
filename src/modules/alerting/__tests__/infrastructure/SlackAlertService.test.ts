@@ -24,12 +24,12 @@ describe('SlackAlertService', () => {
       auth: {
         test: jest.fn().mockResolvedValue({ ok: true }),
       },
-    } as any;
+    } as unknown as jest.Mocked<WebClient>;
 
     // Configura o mock do AuthService
     mockAuthService = {
       getClient: jest.fn().mockResolvedValue(mockWebClient),
-    } as any;
+    } as unknown as jest.Mocked<SlackAuthService>;
 
     // Cria uma instância do serviço com configurações de teste
     service = new SlackAlertService({
@@ -48,7 +48,7 @@ describe('SlackAlertService', () => {
     });
 
     // Substitui o authService pelo mock
-    (service as any).authService = mockAuthService;
+    (service as unknown as { authService: typeof mockAuthService }).authService = mockAuthService;
   });
 
   describe('sendAlert', () => {
@@ -81,23 +81,23 @@ describe('SlackAlertService', () => {
       const analysis: AnalyzeAI = {
         id: 'test-id',
         timestamp: new Date(),
-        erro: {
-          tipo: 'TestError',
-          mensagem: 'Erro de teste',
+        error: {
+          type: 'TestError',
+          message: 'Erro de teste',
         },
-        resultado: {
-          causaRaiz: 'Causa raiz do erro',
-          sugestoes: ['Sugestão 1', 'Sugestão 2'],
-          nivelConfianca: 0.95,
-          categoria: 'Teste',
+        result: {
+          rootCause: 'Causa raiz do erro',
+          suggestions: ['Sugestão 1', 'Sugestão 2'],
+          confidenceLevel: 0.95,
+          category: 'Teste',
           tags: ['error', 'test'],
-          referencias: ['https://exemplo.com/docs'],
+          references: ['https://exemplo.com/docs'],
         },
-        metadados: {
-          modelo: 'gemini-2.0-flash',
-          versao: '1.0.0',
-          tempoProcessamento: 100,
-          tokensUtilizados: 150,
+        metadata: {
+          model: 'gemini-2.0-flash',
+          version: '1.0.0',
+          processingTime: 100,
+          tokensUsed: 150,
         },
       };
 

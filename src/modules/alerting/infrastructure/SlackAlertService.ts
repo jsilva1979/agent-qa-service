@@ -1,9 +1,9 @@
-import { WebClient } from '@slack/web-api';
 import { IAlertService, Alert } from '../domain/ports/IAlertService';
 import { AnalyzeAI } from '../../ai-prompting/domain/entities/AnalyzeAI';
 import { SlackAuthService } from '../../../shared/infrastructure/slackAuth';
 import winston from 'winston';
 import crypto from 'crypto';
+import { ChatPostMessageArguments } from '@slack/web-api';
 
 export class SlackAlertService implements IAlertService {
   private readonly authService: SlackAuthService;
@@ -25,7 +25,8 @@ export class SlackAlertService implements IAlertService {
       jira: {
         url: string;
       };
-    }
+    },
+    authServiceMock?: SlackAuthService
   ) {
     if (!this.config.accessToken) {
       throw new Error('SLACK_ACCESS_TOKEN não configurado');
@@ -40,7 +41,7 @@ export class SlackAlertService implements IAlertService {
       throw new Error('JIRA_URL não configurado');
     }
 
-    this.authService = new SlackAuthService(
+    this.authService = authServiceMock || new SlackAuthService(
       this.config.accessToken,
       this.config.refreshToken,
       {
@@ -84,10 +85,7 @@ export class SlackAlertService implements IAlertService {
 
       const message = this.formatAlertMessage(fullAlert);
       const client = await this.authService.getClient();
-      await client.chat.postMessage({
-        channel: this.channel,
-        ...message
-      });
+      await client.chat.postMessage(message);
 
       this.logger.info('Alerta enviado com sucesso', { id: alertId });
       return alertId;
@@ -116,16 +114,13 @@ export class SlackAlertService implements IAlertService {
         metadata: {
           source: 'slack',
           severity: 'high',
-          tags: analysis.resultado.tags,
+          tags: analysis.result.tags,
         },
       };
 
       const message = this.formatErrorAlertMessage(alert, analysis);
       const client = await this.authService.getClient();
-      await client.chat.postMessage({
-        channel: this.channel,
-        ...message
-      });
+      await client.chat.postMessage(message);
 
       this.logger.info('Alerta de erro enviado com sucesso', { id: alertId });
       return alertId;
@@ -156,10 +151,7 @@ export class SlackAlertService implements IAlertService {
 
       const message = this.formatMetricsAlertMessage(alert);
       const client = await this.authService.getClient();
-      await client.chat.postMessage({
-        channel: this.channel,
-        ...message
-      });
+      await client.chat.postMessage(message);
 
       this.logger.info('Alerta de métricas enviado com sucesso', { id: alertId });
       return alertId;
@@ -180,8 +172,9 @@ export class SlackAlertService implements IAlertService {
     }
   }
 
-  private formatAlertMessage(alert: Alert): any {
+  private formatAlertMessage(alert: Alert): ChatPostMessageArguments {
     return {
+      channel: this.channel,
       text: alert.message,
       blocks: [
         {
@@ -215,10 +208,11 @@ export class SlackAlertService implements IAlertService {
     };
   }
 
-  private formatErrorAlertMessage(alert: Alert, analysis: AnalyzeAI): any {
+  private formatErrorAlertMessage(alert: Alert, analysis: AnalyzeAI): ChatPostMessageArguments {
     const jiraCreateIssueUrl = `${this.jiraUrl}/secure/CreateIssue!default.jspa`;
 
     return {
+      channel: this.channel,
       text: alert.details.error?.message || 'Erro reportado',
       blocks: [
         {
@@ -239,28 +233,29 @@ export class SlackAlertService implements IAlertService {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Causa Raiz:*\n${analysis.resultado.causaRaiz}`,
+            text: `*Causa Raiz:*\n${analysis.result.rootCause}`,
           },
         },
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Sugestões de Correção:*\n${analysis.resultado.sugestoes.map(s => `• ${s}`).join('\n')}`,
+            text: `*Sugestões de Correção:*\n${analysis.result.suggestions.map((s: string) => `• ${s}`).join('\n')}`,
           },
         },
         {
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: `*Nível de Confiança:* ${analysis.resultado.nivelConfianca * 100}%`,
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Categoria:* ${analysis.resultado.categoria}`,
-            },
-          ],
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*Nível de Confiança:* ${analysis.result.confidenceLevel * 100}%`,
+          },
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*Categoria:* ${analysis.result.category}`,
+          },
         },
         {
           type: 'divider',
@@ -270,7 +265,7 @@ export class SlackAlertService implements IAlertService {
           elements: [
             {
               type: 'mrkdwn',
-              text: `*Tags:* ${analysis.resultado.tags.join(', ')}`,
+              text: `*Tags:* ${analysis.result.tags.join(', ')}`,
             },
           ],
         },
@@ -281,12 +276,12 @@ export class SlackAlertService implements IAlertService {
               type: 'button',
               text: {
                 type: 'plain_text',
-                text: 'Criar Issue no Jira',
+                text: 'Criar Incidente',
                 emoji: true,
               },
               style: 'primary',
-              url: jiraCreateIssueUrl,
               action_id: 'create_jira_issue',
+              value: alert.id,
             },
           ],
         },
@@ -294,9 +289,10 @@ export class SlackAlertService implements IAlertService {
     };
   }
 
-  private formatMetricsAlertMessage(alert: Alert): any {
+  private formatMetricsAlertMessage(alert: Alert): ChatPostMessageArguments {
     const metrics = alert.details.metrics;
     return {
+      channel: this.channel,
       text: `Métricas do Sistema: CPU ${metrics?.cpu?.toFixed(2)}%, Memória ${metrics?.memory?.toFixed(2)}%, Latência ${metrics?.latency?.toFixed(2)}ms`,
       blocks: [
         {

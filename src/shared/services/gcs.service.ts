@@ -16,9 +16,7 @@ export class GoogleCloudStorageService {
    */
   async uploadFile(filePath: string, destinationFileName?: string): Promise<string> {
     const fileName = destinationFileName || `${uuidv4()}-${filePath.split('/').pop()}`;
-    const file = this.bucket.file(fileName);
-
-    await file.upload(filePath, {
+    await this.bucket.upload(filePath, {
       destination: fileName,
       resumable: true, // Permite uploads grandes
       validation: 'crc32c', // Garante a integridade dos dados
@@ -26,7 +24,7 @@ export class GoogleCloudStorageService {
         cacheControl: 'public, max-age=31536000', // Cache por 1 ano
       },
     });
-
+    const file = this.bucket.file(fileName);
     await file.makePublic(); // Torna o arquivo acessível publicamente (ajustar conforme necessidade de segurança)
 
     console.log(`✅ Arquivo ${fileName} enviado para ${bucketName}.`);

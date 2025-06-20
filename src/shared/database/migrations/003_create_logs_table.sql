@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS logs (
+  id SERIAL PRIMARY KEY,
+  content TEXT NOT NULL,
+  metadata JSONB,
+  tags TEXT[],
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+); 

@@ -1,5 +1,13 @@
 import { AnalyzeError } from '../../ai-prompting/domain/AnalyzeError';
-import { CodeContext } from '../../github-access/domain/CodeContext';
+
+export type CodeContext = {
+  arquivo: string;
+  linha: number;
+  codigo: string;
+  repositorio: string;
+  branch: string;
+  url: string;
+};
 
 /**
  * Interface que representa os dados de entrada para criação de um alerta

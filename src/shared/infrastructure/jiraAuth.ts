@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-interface JiraAuthConfig {
+export interface JiraAuthConfig {
   clientId: string;
   clientSecret: string;
   accessToken: string;

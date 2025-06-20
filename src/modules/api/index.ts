@@ -1,7 +1,6 @@
 import { createLogger, format, transports } from 'winston';
 import { ExpressApiServer } from './application/ExpressApiServer';
 import { config } from './config/config';
-import { orchestrator } from '../orchestration';
 
 // Configuração do logger
 const logger = createLogger({
@@ -19,7 +18,7 @@ const logger = createLogger({
 });
 
 // Criação do servidor API
-const apiServer = new ExpressApiServer(orchestrator, logger);
+const apiServer = new ExpressApiServer(logger);
 
 // Exporta o servidor e o logger
 export { apiServer, logger }; 

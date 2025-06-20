@@ -3,7 +3,7 @@ import { LogEntry, Analysis } from '../config/database';
 
 export class DatabaseService {
   // Método para salvar um novo log
-  async saveLog(content: string, metadata: Record<string, any>, tags: string[] = []): Promise<LogEntry> {
+  async saveLog(content: string, metadata: Record<string, unknown>, tags: string[] = []): Promise<LogEntry> {
     const query = `
       INSERT INTO logs (content, metadata, tags)
       VALUES ($1, $2, $3)
@@ -16,7 +16,7 @@ export class DatabaseService {
   }
 
   // Método para salvar uma nova análise
-  async saveAnalysis(logId: string, analysisType: string, content: string, metadata: Record<string, any>, tags: string[] = []): Promise<Analysis> {
+  async saveAnalysis(logId: string, analysisType: string, content: string, metadata: Record<string, unknown>, tags: string[] = []): Promise<Analysis> {
     const query = `
       INSERT INTO analyses (log_id, analysis_type, content, metadata, tags)
       VALUES ($1, $2, $3, $4, $5)

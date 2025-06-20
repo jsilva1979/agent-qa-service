@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { IAIService, AnalysisData, CodeAnalysis } from '../domain/ports/IAIService';
 import { AnalyzeError } from '../domain/AnalyzeError';
-import { CodeContext } from '../../github-access/domain/CodeContext';
 import { AnalyzeAI } from '../domain/entities/AnalyzeAI';
 
 export class GeminiService implements IAIService {
@@ -50,29 +49,32 @@ ${data.error.stackTrace ? `Stacktrace: ${data.error.stackTrace}` : ''}
       return {
         id: crypto.randomUUID(),
         timestamp: new Date(),
-        erro: {
-          tipo: data.error.type,
-          mensagem: data.error.message,
+        error: {
+          type: data.error.type,
+          message: data.error.message,
           stackTrace: data.error.stackTrace,
-          contexto: data.error.context
+          context: data.error.context
         },
-        resultado: {
-          causaRaiz: parsed.causa,
-          sugestoes: parsed.verificacoesAusentes?.length ? parsed.verificacoesAusentes : [parsed.sugestaoCorrecao],
-          nivelConfianca: parsed.nivelConfianca ?? 0.8,
-          categoria: 'erro',
+        result: {
+          rootCause: parsed.rootCause,
+          suggestions: parsed.missingChecks?.length ? parsed.missingChecks : [parsed.correctionSuggestion],
+          confidenceLevel: parsed.confidenceLevel ?? 0.8,
+          category: 'error',
           tags: [],
-          referencias: []
+          references: []
         },
-        metadados: {
-          modelo: this.model,
-          versao: '2.0-flash',
-          tempoProcessamento: elapsed,
-          tokensUtilizados: 0
+        metadata: {
+          model: this.model,
+          version: '2.0-flash',
+          processingTime: elapsed,
+          tokensUsed: 0
         }
       };
-    } catch (error: any) {
-      throw new Error(`Erro ao analisar com Gemini: ${error.message}`);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw new Error(`Erro ao analisar com Gemini: ${error.message}`);
+      }
+      throw new Error('Erro ao analisar com Gemini: erro desconhecido');
     }
   }
 
@@ -122,8 +124,11 @@ ${sourceCode}
           tokensUsed: 0
         }
       };
-    } catch (error: any) {
-      throw new Error(`Erro ao analisar código com Gemini: ${error.message}`);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw new Error(`Erro ao analisar código com Gemini: ${error.message}`);
+      }
+      throw new Error('Erro ao analisar código com Gemini: erro desconhecido');
     }
   }
 
@@ -159,7 +164,7 @@ ${sourceCode}
     };
   }
 
-  private parsearRespostaGemini(resposta: string): AnalyzeError {
+  public parsearRespostaGemini(resposta: string): AnalyzeError {
     // Extrair campos da resposta usando regex
     const causaMatch = resposta.match(/Causa: (.*?)(?:\n|$)/);
     const verificacoesMatch = resposta.match(/Verificações ausentes: (.*?)(?:\n|$)/);
@@ -169,11 +174,11 @@ ${sourceCode}
 
     // Mapear para o objeto AnalyzeError
     return {
-      causa: causaMatch ? causaMatch[1].trim() : "Causa não identificada",
-      verificacoesAusentes: verificacoesMatch ? verificacoesMatch[1].split(',').map(v => v.trim()) : [],
-      sugestaoCorrecao: sugestaoMatch ? sugestaoMatch[1].trim() : "Sugestão não disponível",
-      explicacao: explicacaoMatch ? explicacaoMatch[1].trim() : "Explicação não disponível",
-      nivelConfianca: nivelConfiancaMatch ? parseInt(nivelConfiancaMatch[1]) : 0
+      rootCause: causaMatch ? causaMatch[1].trim() : "Causa não identificada",
+      missingChecks: verificacoesMatch ? verificacoesMatch[1].split(',').map(v => v.trim()) : [],
+      correctionSuggestion: sugestaoMatch ? sugestaoMatch[1].trim() : "Sugestão não disponível",
+      explanation: explicacaoMatch ? explicacaoMatch[1].trim() : "Explicação não disponível",
+      confidenceLevel: nivelConfiancaMatch ? parseInt(nivelConfiancaMatch[1]) : 0
     };
   }
 } 

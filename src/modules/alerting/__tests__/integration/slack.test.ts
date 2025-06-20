@@ -61,23 +61,23 @@ describe('Slack Integration Tests', () => {
     const analysis = {
       id: 'test-integration-id',
       timestamp: new Date(),
-      erro: {
-        tipo: 'IntegrationTestError',
-        mensagem: 'Erro de teste de integração',
+      error: {
+        type: 'IntegrationTestError',
+        message: 'Erro de teste de integração',
       },
-      resultado: {
-        causaRaiz: 'Teste de integração com o Slack',
-        sugestoes: ['Verificar a integração', 'Testar novamente'],
-        nivelConfianca: 0.95,
-        categoria: 'Teste',
+      result: {
+        rootCause: 'Teste de integração com o Slack',
+        suggestions: ['Verificar a integração', 'Testar novamente'],
+        confidenceLevel: 0.95,
+        category: 'Teste',
         tags: ['integration', 'test'],
-        referencias: ['https://api.slack.com/docs'],
+        references: ['https://api.slack.com/docs'],
       },
-      metadados: {
-        modelo: 'gemini-2.0-flash',
-        versao: '1.0.0',
-        tempoProcessamento: 100,
-        tokensUtilizados: 150,
+      metadata: {
+        model: 'gemini-2.0-flash',
+        version: '1.0.0',
+        processingTime: 100,
+        tokensUsed: 150,
       },
     };
 

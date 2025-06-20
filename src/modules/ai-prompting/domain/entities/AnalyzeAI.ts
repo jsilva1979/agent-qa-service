@@ -12,16 +12,16 @@ export interface AnalyzeAI {
   /**
    * Dados do erro analisado
    */
-  erro: {
+  error: {
     /**
      * Tipo do erro
      */
-    tipo: string;
+    type: string;
 
     /**
      * Mensagem do erro
      */
-    mensagem: string;
+    message: string;
 
     /**
      * Stack trace do erro
@@ -31,32 +31,32 @@ export interface AnalyzeAI {
     /**
      * Contexto do erro
      */
-    contexto?: Record<string, any>;
+    context?: Record<string, unknown>;
   };
 
   /**
    * Resultado da análise
    */
-  resultado: {
+  result: {
     /**
      * Descrição da causa raiz do erro
      */
-    causaRaiz: string;
+    rootCause: string;
 
     /**
      * Sugestões de correção
      */
-    sugestoes: string[];
+    suggestions: string[];
 
     /**
      * Nível de confiança da análise (0-1)
      */
-    nivelConfianca: number;
+    confidenceLevel: number;
 
     /**
      * Categorização do erro
      */
-    categoria: string;
+    category: string;
 
     /**
      * Tags relevantes
@@ -66,31 +66,36 @@ export interface AnalyzeAI {
     /**
      * Referências úteis (links, documentação, etc)
      */
-    referencias: string[];
+    references: string[];
+
+    /**
+     * Nível de impacto do erro
+     */
+    impact: string;
   };
 
   /**
    * Metadados da análise
    */
-  metadados: {
+  metadata: {
     /**
      * Modelo de IA utilizado
      */
-    modelo: string;
+    model: string;
 
     /**
      * Versão do modelo
      */
-    versao: string;
+    version: string;
 
     /**
      * Tempo de processamento em ms
      */
-    tempoProcessamento: number;
+    processingTime: number;
 
     /**
      * Tokens utilizados
      */
-    tokensUtilizados: number;
+    tokensUsed: number;
   };
 } 

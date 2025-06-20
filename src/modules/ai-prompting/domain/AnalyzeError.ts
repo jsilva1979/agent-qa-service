@@ -1,7 +1,7 @@
 export interface AnalyzeError {
-  causa: string;
-  verificacoesAusentes: string[];
-  sugestaoCorrecao: string;
-  explicacao: string;
-  nivelConfianca: number; // 0-100
+  rootCause: string;
+  missingChecks: string[];
+  correctionSuggestion: string;
+  explanation: string;
+  confidenceLevel: number; // 0-100
 }

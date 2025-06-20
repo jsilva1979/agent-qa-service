@@ -1,5 +1,4 @@
 import { WebClient } from '@slack/web-api';
-import { GeminiAIService } from '../application/GeminiAIService';
 import { JiraService } from '../../../shared/infrastructure/jiraService';
 import { AnalyzeAI } from '@/modules/ai-prompting/domain/entities/AnalyzeAI';
 import { beforeAll, describe, it, expect } from '@jest/globals';
@@ -13,53 +12,43 @@ describe('Demonstração do GeminiAIService com Slack', () => {
   });
 
   it('Demonstração: Análise de código e notificação no Slack', async () => {
-    const aiService = new GeminiAIService({
-      apiKey: process.env.GEMINI_API_KEY || '',
-      modelName: 'gemini-2.0-flash',
-      logging: {
-        level: 'info',
-        file: {
-          path: 'logs/ai-service.log'
-        }
-      }
-    });
-
     // Simula uma análise de código
-    const analise: AnalyzeAI = {
+    const analysis: AnalyzeAI = {
       id: 'test-id',
       timestamp: new Date(),
-      erro: {
-        tipo: 'TypeError',
-        mensagem: 'Cannot read property of undefined',
+      error: {
+        type: 'TypeError',
+        message: 'Cannot read property of undefined',
         stackTrace: 'Error: Cannot read property of undefined\nat test.ts:42',
-        contexto: {
-          arquivo: 'test.ts',
-          linha: 42,
-          codigo: 'const result = obj.property;'
+        context: {
+          file: 'test.ts',
+          line: 42,
+          code: 'const result = obj.property;'
         }
       },
-      resultado: {
-        causaRaiz: 'Tentativa de acessar propriedade de objeto undefined',
-        sugestoes: [
+      result: {
+        rootCause: 'Tentativa de acessar propriedade de objeto undefined',
+        suggestions: [
           'Adicionar verificação de null/undefined antes de acessar a propriedade',
           'Usar optional chaining (obj?.property)',
           'Inicializar o objeto antes de acessá-lo'
         ],
-        nivelConfianca: 0.95,
-        categoria: 'error',
+        confidenceLevel: 0.95,
+        category: 'error',
         tags: ['javascript', 'type-error', 'undefined'],
-        referencias: ['https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cant_access_property']
+        references: ['https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cant_access_property']
       },
-      metadados: {
-        modelo: 'Gemini',
-        versao: 'gemini-2.0-flash',
-        tempoProcessamento: 150,
-        tokensUtilizados: 75
+      metadata: {
+        model: 'Gemini',
+        version: 'gemini-2.0-flash',
+        processingTime: 150,
+        tokensUsed: 75
       }
     };
 
     const mensagemSlack = {
       channel: SLACK_CHANNEL,
+      text: 'Resumo da análise',
       blocks: [
         {
           type: 'header',
@@ -73,21 +62,21 @@ describe('Demonstração do GeminiAIService com Slack', () => {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Erro:* ${analise.erro.tipo}\n*Mensagem:* ${analise.erro.mensagem}`
+            text: `*Erro:* ${analysis.error.type}\n*Mensagem:* ${analysis.error.message}`
           }
         },
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Causa Raiz:*\n${analise.resultado.causaRaiz}`
+            text: `*Causa Raiz:*\n${analysis.result.rootCause}`
           }
         },
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Sugestões de Correção:*\n${analise.resultado.sugestoes.map(s => `• ${s}`).join('\n')}`
+            text: `*Sugestões de Correção:*\n${analysis.result.suggestions.map(s => `• ${s}`).join('\n')}`
           }
         },
         {
@@ -95,11 +84,11 @@ describe('Demonstração do GeminiAIService com Slack', () => {
           elements: [
             {
               type: 'mrkdwn',
-              text: `*Nível de Confiança:* ${analise.resultado.nivelConfianca * 100}%`
+              text: `*Nível de Confiança:* ${analysis.result.confidenceLevel * 100}%`
             },
             {
               type: 'mrkdwn',
-              text: `*Categoria:* ${analise.resultado.categoria}`
+              text: `*Categoria:* ${analysis.result.category}`
             }
           ]
         },
@@ -111,7 +100,7 @@ describe('Demonstração do GeminiAIService com Slack', () => {
           elements: [
             {
               type: 'mrkdwn',
-              text: `*Tags:* ${analise.resultado.tags.join(', ')}`
+              text: `*Tags:* ${analysis.result.tags.join(', ')}`
             }
           ]
         },
@@ -157,55 +146,45 @@ describe('Demonstração do GeminiAIService com Slack', () => {
   }, 30000);
 
   it('Demonstração: Análise de erro em produção e notificação no Slack', async () => {
-    const aiService = new GeminiAIService({
-      apiKey: process.env.GEMINI_API_KEY || '',
-      modelName: 'gemini-2.0-flash',
-      logging: {
-        level: 'info',
-        file: {
-          path: 'logs/ai-service.log'
-        }
-      }
-    });
-
     // Simula uma análise de erro em produção
-    const analise: AnalyzeAI = {
+    const analysis: AnalyzeAI = {
       id: 'prod-error-id',
       timestamp: new Date(),
-      erro: {
-        tipo: 'Error',
-        mensagem: 'Failed to connect to database',
+      error: {
+        type: 'Error',
+        message: 'Failed to connect to database',
         stackTrace: 'Error: Failed to connect to database\nat db.ts:123',
-        contexto: {
-          ambiente: 'production',
-          servico: 'api-gateway',
-          versao: '1.2.3',
+        context: {
+          environment: 'production',
+          service: 'api-gateway',
+          version: '1.2.3',
           timestamp: new Date().toISOString()
         }
       },
-      resultado: {
-        causaRaiz: 'Timeout na conexão com o banco de dados',
-        sugestoes: [
+      result: {
+        rootCause: 'Timeout na conexão com o banco de dados',
+        suggestions: [
           'Verificar se o banco de dados está online',
           'Verificar configurações de rede e firewall',
           'Aumentar timeout da conexão',
           'Implementar retry com backoff exponencial'
         ],
-        nivelConfianca: 0.9,
-        categoria: 'critical',
+        confidenceLevel: 0.9,
+        category: 'critical',
         tags: ['database', 'connection', 'production'],
-        referencias: ['https://docs.mongodb.com/manual/administration/production-notes/']
+        references: ['https://docs.mongodb.com/manual/administration/production-notes/']
       },
-      metadados: {
-        modelo: 'Gemini',
-        versao: 'gemini-2.0-flash',
-        tempoProcessamento: 200,
-        tokensUtilizados: 100
+      metadata: {
+        model: 'Gemini',
+        version: 'gemini-2.0-flash',
+        processingTime: 200,
+        tokensUsed: 100
       }
     };
 
     const mensagemSlack = {
       channel: SLACK_CHANNEL,
+      text: 'Resumo da análise',
       blocks: [
         {
           type: 'header',
@@ -219,21 +198,21 @@ describe('Demonstração do GeminiAIService com Slack', () => {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Erro:* ${analise.erro.tipo}\n*Mensagem:* ${analise.erro.mensagem}`
+            text: `*Erro:* ${analysis.error.type}\n*Mensagem:* ${analysis.error.message}`
           }
         },
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Causa Raiz:*\n${analise.resultado.causaRaiz}`
+            text: `*Causa Raiz:*\n${analysis.result.rootCause}`
           }
         },
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Sugestões de Correção:*\n${analise.resultado.sugestoes.map(s => `• ${s}`).join('\n')}`
+            text: `*Sugestões de Correção:*\n${analysis.result.suggestions.map(s => `• ${s}`).join('\n')}`
           }
         },
         {
@@ -241,11 +220,11 @@ describe('Demonstração do GeminiAIService com Slack', () => {
           elements: [
             {
               type: 'mrkdwn',
-              text: `*Nível de Confiança:* ${analise.resultado.nivelConfianca * 100}%`
+              text: `*Nível de Confiança:* ${analysis.result.confidenceLevel * 100}%`
             },
             {
               type: 'mrkdwn',
-              text: `*Categoria:* ${analise.resultado.categoria}`
+              text: `*Categoria:* ${analysis.result.category}`
             }
           ]
         },
@@ -257,7 +236,7 @@ describe('Demonstração do GeminiAIService com Slack', () => {
           elements: [
             {
               type: 'mrkdwn',
-              text: `*Tags:* ${analise.resultado.tags.join(', ')}`
+              text: `*Tags:* ${analysis.result.tags.join(', ')}`
             }
           ]
         },
@@ -317,4 +296,10 @@ describe('Integração com Jira Cloud', () => {
     expect(result).toHaveProperty('id');
     console.log('Issue criada no Jira:', result.key);
   }, 20000);
+});
+
+jest.spyOn(JiraService.prototype, 'createIssue').mockResolvedValue({
+  key: 'TEST-123',
+  id: '10001',
+  self: 'https://jira.example.com/rest/api/2/issue/10001',
 }); 

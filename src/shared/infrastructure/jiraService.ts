@@ -1,49 +1,64 @@
 import axios from 'axios';
-import { JiraAuth, getJiraAuthConfigFromEnv } from './jiraAuth';
 
 export interface JiraIssueFields {
   project: { key: string };
   summary: string;
-  description: string;
+  description: {
+    version: number;
+    type: string;
+    content: Array<{
+      type: string;
+      content?: Array<{
+        type: string;
+        text?: string;
+        [key: string]: unknown;
+      }>;
+      [key: string]: unknown;
+    }>;
+  };
   issuetype: { name: string };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
-export class JiraService {
-  private auth: JiraAuth;
-  private cloudId: string;
-  private baseUrl: string;
-
-  constructor() {
-    const config = getJiraAuthConfigFromEnv();
-    this.auth = new JiraAuth(config);
-    this.cloudId = config.cloudId;
-    this.baseUrl = config.baseUrl;
-  }
-
-  /**
-   * Cria uma issue no Jira Cloud
-   * @param fields Campos da issue (project, summary, description, issuetype, etc)
-   */
-  public async createIssue(fields: JiraIssueFields): Promise<any> {
-    const accessToken = await this.auth.getAccessToken();
-    const url = `${this.baseUrl}/ex/jira/${this.cloudId}/rest/api/3/issue`;
-    try {
-      const response = await axios.post(
-        url,
-        { fields },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-        }
-      );
-      return response.data;
-    } catch (error: any) {
-      throw new Error('Erro ao criar issue no Jira: ' + (error.response?.data?.errorMessages || error.message));
+export async function createJiraIssue({ accessToken, cloudId, fields }: {
+  accessToken: string;
+  cloudId: string;
+  fields: JiraIssueFields;
+}): Promise<{ key: string; id: string; self: string }> {
+  const url = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/issue`;
+  try {
+    const response = await axios.post(
+      url,
+      { fields },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error: unknown) {
+    let errorMsg = 'Erro ao criar issue no Jira: ';
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      error.response &&
+      typeof error.response === 'object' &&
+      'data' in error.response &&
+      error.response.data
+    ) {
+      // eslint-disable-next-line no-console
+      console.error('Detalhes do erro Jira:', error.response.data);
     }
+    if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'errorMessages' in error.response.data) {
+      errorMsg += (error.response.data.errorMessages as string[]).join(', ');
+    } else if (error instanceof Error) {
+      errorMsg += error.message;
+    }
+    throw new Error(errorMsg);
   }
 }
 

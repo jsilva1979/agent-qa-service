@@ -13,6 +13,7 @@ build/
 .env.local
 .env.*.local
 .env.example
+variaveis_antigas.conf
 
 # IDE
 .idea/
@@ -32,4 +33,5 @@ logs/
 # Testing
 coverage/ 
 
-docs/
+# A pasta 'docs' geralmente contém documentação que deve ser versionada.
+# Removendo-a do gitignore.

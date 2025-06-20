@@ -4,64 +4,64 @@ describe('AnalyzeAI', () => {
   const mockAnalise: AnalyzeAI = {
     id: 'test-id',
     timestamp: new Date(),
-    erro: {
-      tipo: 'TestError',
-      mensagem: 'Test message',
+    error: {
+      type: 'TestError',
+      message: 'Test message',
       stackTrace: 'at Test.test (Test.java:1)',
     },
-    resultado: {
-      causaRaiz: 'Test root cause',
-      sugestoes: ['Test suggestion'],
-      nivelConfianca: 0.8,
-      categoria: 'Test category',
+    result: {
+      rootCause: 'Test root cause',
+      suggestions: ['Test suggestion'],
+      confidenceLevel: 0.8,
+      category: 'Test category',
       tags: ['test'],
-      referencias: ['test-ref'],
+      references: ['test-ref'],
     },
-    metadados: {
-      modelo: 'Test Model',
-      versao: '1.0',
-      tempoProcessamento: 100,
-      tokensUtilizados: 50,
+    metadata: {
+      model: 'Test Model',
+      version: '1.0',
+      processingTime: 100,
+      tokensUsed: 50,
     },
   };
 
   it('deve ter uma estrutura válida', () => {
     expect(mockAnalise).toHaveProperty('id');
     expect(mockAnalise).toHaveProperty('timestamp');
-    expect(mockAnalise).toHaveProperty('erro');
-    expect(mockAnalise).toHaveProperty('resultado');
-    expect(mockAnalise).toHaveProperty('metadados');
+    expect(mockAnalise).toHaveProperty('error');
+    expect(mockAnalise).toHaveProperty('result');
+    expect(mockAnalise).toHaveProperty('metadata');
   });
 
   it('deve ter um erro válido', () => {
-    expect(mockAnalise.erro).toHaveProperty('tipo');
-    expect(mockAnalise.erro).toHaveProperty('mensagem');
-    expect(mockAnalise.erro).toHaveProperty('stackTrace');
+    expect(mockAnalise.error).toHaveProperty('type');
+    expect(mockAnalise.error).toHaveProperty('message');
+    expect(mockAnalise.error).toHaveProperty('stackTrace');
   });
 
   it('deve ter um resultado válido', () => {
-    expect(mockAnalise.resultado).toHaveProperty('causaRaiz');
-    expect(mockAnalise.resultado).toHaveProperty('sugestoes');
-    expect(mockAnalise.resultado).toHaveProperty('nivelConfianca');
-    expect(mockAnalise.resultado).toHaveProperty('categoria');
-    expect(mockAnalise.resultado).toHaveProperty('tags');
-    expect(mockAnalise.resultado).toHaveProperty('referencias');
+    expect(mockAnalise.result).toHaveProperty('rootCause');
+    expect(mockAnalise.result).toHaveProperty('suggestions');
+    expect(mockAnalise.result).toHaveProperty('confidenceLevel');
+    expect(mockAnalise.result).toHaveProperty('category');
+    expect(mockAnalise.result).toHaveProperty('tags');
+    expect(mockAnalise.result).toHaveProperty('references');
 
-    expect(Array.isArray(mockAnalise.resultado.sugestoes)).toBe(true);
-    expect(Array.isArray(mockAnalise.resultado.tags)).toBe(true);
-    expect(Array.isArray(mockAnalise.resultado.referencias)).toBe(true);
-    expect(typeof mockAnalise.resultado.nivelConfianca).toBe('number');
-    expect(mockAnalise.resultado.nivelConfianca).toBeGreaterThanOrEqual(0);
-    expect(mockAnalise.resultado.nivelConfianca).toBeLessThanOrEqual(1);
+    expect(Array.isArray(mockAnalise.result.suggestions)).toBe(true);
+    expect(Array.isArray(mockAnalise.result.tags)).toBe(true);
+    expect(Array.isArray(mockAnalise.result.references)).toBe(true);
+    expect(typeof mockAnalise.result.confidenceLevel).toBe('number');
+    expect(mockAnalise.result.confidenceLevel).toBeGreaterThanOrEqual(0);
+    expect(mockAnalise.result.confidenceLevel).toBeLessThanOrEqual(1);
   });
 
   it('deve ter metadados válidos', () => {
-    expect(mockAnalise.metadados).toHaveProperty('modelo');
-    expect(mockAnalise.metadados).toHaveProperty('versao');
-    expect(mockAnalise.metadados).toHaveProperty('tempoProcessamento');
-    expect(mockAnalise.metadados).toHaveProperty('tokensUtilizados');
+    expect(mockAnalise.metadata).toHaveProperty('model');
+    expect(mockAnalise.metadata).toHaveProperty('version');
+    expect(mockAnalise.metadata).toHaveProperty('processingTime');
+    expect(mockAnalise.metadata).toHaveProperty('tokensUsed');
 
-    expect(typeof mockAnalise.metadados.tempoProcessamento).toBe('number');
-    expect(typeof mockAnalise.metadados.tokensUtilizados).toBe('number');
+    expect(typeof mockAnalise.metadata.processingTime).toBe('number');
+    expect(typeof mockAnalise.metadata.tokensUsed).toBe('number');
   });
 }); 

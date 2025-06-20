@@ -1,5 +1,7 @@
-import { IOrchestrator } from '../../../orchestration/domain/ports/IOrchestrator';
-import { LogEntry } from '../../../log-analysis/domain/entities/LogEntry';
+export interface LogEntry {
+  // Defina os campos necessários conforme uso real
+  [key: string]: unknown;
+}
 
 export interface IApiServer {
   /**

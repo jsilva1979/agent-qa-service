@@ -1,12 +1,20 @@
 import { SendAlertUseCase } from './SendAlertUseCase';
 import { IAlertService, Alert } from '../domain/ports/IAlertService';
 import { AlertInput } from '../domain/AlertInput';
-import { CodeContext } from '../../github-access/domain/CodeContext';
 import { AnalyzeError } from '../../ai-prompting/domain/AnalyzeError';
 
 describe('SendAlertUseCase', () => {
   let useCase: SendAlertUseCase;
   let mockAlertService: jest.Mocked<IAlertService>;
+
+  type CodeContext = {
+    arquivo: string;
+    linha: number;
+    codigo: string;
+    repositorio: string;
+    branch: string;
+    url: string;
+  };
 
   beforeEach(() => {
     mockAlertService = {
@@ -29,11 +37,11 @@ describe('SendAlertUseCase', () => {
     };
 
     const mockAnalysis: AnalyzeError = {
-      causa: 'Variável name não foi inicializada',
-      verificacoesAusentes: ['Verificação de null'],
-      sugestaoCorrecao: 'Adicionar verificação if (name != null)',
-      explicacao: 'O erro ocorre porque...',
-      nivelConfianca: 90,
+      rootCause: 'Variável name não foi inicializada',
+      missingChecks: ['Verificação de null'],
+      correctionSuggestion: 'Adicionar verificação if (name != null)',
+      explanation: 'O erro ocorre porque...',
+      confidenceLevel: 90,
     };
 
     const mockAlertInput: AlertInput = {

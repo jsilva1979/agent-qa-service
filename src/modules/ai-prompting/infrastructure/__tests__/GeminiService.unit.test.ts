@@ -18,14 +18,14 @@ Explicação: O erro ocorre porque a variável não foi inicializada.
 Nível de confiança: 95
 `;
 
-    const analise = (geminiService as any).parsearRespostaGemini(respostaMock);
+    const analise = (geminiService as unknown as { parsearRespostaGemini: (resposta: string) => AnalyzeError }).parsearRespostaGemini(respostaMock);
 
     expect(analise).toEqual({
-      causa: 'Variável não definida',
-      verificacoesAusentes: ['null-check', 'try-catch'],
-      sugestaoCorrecao: 'Defina a variável antes de usá-la',
-      explicacao: 'O erro ocorre porque a variável não foi inicializada.',
-      nivelConfianca: 95
+      rootCause: 'Variável não definida',
+      missingChecks: ['null-check', 'try-catch'],
+      correctionSuggestion: 'Defina a variável antes de usá-la',
+      explanation: 'O erro ocorre porque a variável não foi inicializada.',
+      confidenceLevel: 95,
     });
   });
 
@@ -35,14 +35,14 @@ Causa: Variável não definida
 Sugestão de correção: Defina a variável antes de usá-la
 `;
 
-    const analise = (geminiService as any).parsearRespostaGemini(respostaIncompleta);
+    const analise = (geminiService as unknown as { parsearRespostaGemini: (resposta: string) => AnalyzeError }).parsearRespostaGemini(respostaIncompleta);
 
     expect(analise).toEqual({
-      causa: 'Variável não definida',
-      verificacoesAusentes: [],
-      sugestaoCorrecao: 'Defina a variável antes de usá-la',
-      explicacao: 'Explicação não disponível',
-      nivelConfianca: 0
+      rootCause: 'Variável não definida',
+      missingChecks: [],
+      correctionSuggestion: 'Defina a variável antes de usá-la',
+      explanation: 'Explicação não disponível',
+      confidenceLevel: 0,
     });
   });
 }); 
