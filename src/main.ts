@@ -29,3 +29,4 @@ server.iniciar(PORT).catch(error => {
   logger.error('Erro ao iniciar o servidor:', { error });
   process.exit(1);
 }); 
+// Exibir mensagem de sucesso
