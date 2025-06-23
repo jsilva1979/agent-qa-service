@@ -1,115 +1,138 @@
-# 🤖 Agent-QA-Service: Agente de QA com IA Gemini, Slack e Jira
+# 🤖 Agent-QA-Service
 
-Um agente autônomo de QA que integra Slack, Gemini AI (Google), Jira Cloud e banco de dados PostgreSQL/Supabase para automatizar a análise de erros, classificação, geração de cards e evidências.
+**Agente de QA Inteligente com Gemini AI, Slack e Jira**
+
+![GitHub Stars](https://img.shields.io/github/stars/seu-usuario/agent-qa-service?style=social)
+![MIT License](https://img.shields.io/github/license/seu-usuario/agent-qa-service)
+![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
+
+---
+
+## 🧠 Sobre o Projeto
+
+O **Agent-QA-Service** é um agente autônomo de QA que integra **Slack**, **Gemini AI (Google)**, **Jira Cloud** e banco de dados **PostgreSQL/Supabase** para **automatizar a análise de erros, classificação e criação de cards** com evidências.
+
+Ele reduz drasticamente o tempo entre a detecção de uma falha e sua documentação no Jira, com interação direta via Slack.
+
+---
+
+```
+# Exemplo de mensagem de erro no Slack:
+[ERRO] TypeError: Cannot read property 'street' of null
+
+# Resposta do bot:
+Categoria: Erro de acesso nulo  
+Prioridade sugerida: Alta  
+🔘 Criar card | 🔘 Cancelar
+```
+
+---
 
 ## 🚀 Funcionalidades
 
-- Análise automática de mensagens de erro postadas no Slack
-- Classificação inteligente de erros usando Gemini AI
-- Criação automática de cards no Jira com base na análise da IA
-- Mapeamento de categoria/impacto para tipos e prioridades válidas do Jira
-- Logs detalhados e persistência de análises no PostgreSQL (via Supabase)
-- Cache de requisições com Redis
-- Fluxo de aprovação interativo no Slack (botões para criar/cancelar card)
-- Histórico de ações e análises salvos para auditoria
+- ✅ Análise automática de mensagens de erro no Slack
+- ✅ Classificação inteligente com Gemini AI
+- ✅ Criação automática de cards no Jira
+- ✅ Mapeamento de categoria/impacto para tipos válidos do Jira
+- ✅ Logs persistidos no PostgreSQL
+- ✅ Cache de requisições com Redis
+- ✅ Fluxo de aprovação interativo via Slack
+- ✅ Histórico completo de ações e análises
+
+---
+
+## ❓ Por que usar este projeto?
+
+Se você trabalha com QA, suporte ou SRE, este agente:
+
+- Reduz a **carga cognitiva** na análise de erros
+- Evita **criação manual de tickets**
+- Classifica automaticamente o problema com IA
+- Cria um histórico confiável e auditável de incidentes
+
+---
 
 ## 🛠️ Stack Tecnológica
 
-- TypeScript + Node.js
+- **TypeScript + Node.js**
 - Slack Bolt (Socket Mode)
 - Gemini AI (Google Generative AI)
 - Jira Cloud API (OAuth2)
-- PostgreSQL/Supabase
+- PostgreSQL + Supabase
 - Redis
-- Docker (para serviços auxiliares)
+- Docker
 - Jest (testes)
+
+---
 
 ## 📋 Pré-requisitos
 
 - Node.js 18+
 - Yarn ou npm
-- Docker (para Redis e PostgreSQL)
-- Conta no Jira Cloud e chave de API Gemini
+- Docker
+- Conta no Jira Cloud e chave da API Gemini
+
+---
 
 ## ⚡️ Como rodar localmente
 
-1. **Clone o repositório:**
-   ```bash
-   git clone <url-do-repositorio>
-   cd agent-qa-service
-   ```
+```bash
+# 1. Clone o repositório
+git clone https://github.com/seu-usuario/agent-qa-service.git
+cd agent-qa-service
 
-2. **Instale as dependências:**
-   ```bash
-   yarn install
-   # ou npm install
-   ```
+# 2. Instale as dependências
+yarn install
+# ou: npm install
 
-3. **Configure o ambiente:**
-   - Copie o exemplo de variáveis:
-     ```bash
-     cp .env.example .env
-     ```
-   - Preencha o `.env` com suas credenciais:
-     - SLACK_BOT_TOKEN, SLACK_APP_TOKEN
-     - GEMINI_API_KEY
-     - JIRA_CLIENT_ID, JIRA_CLIENT_SECRET, JIRA_CLOUD_ID, JIRA_SITE_URL, JIRA_BASE_URL
-     - POSTGRES_URL
-     - REDIS_URL
+# 3. Configure o ambiente
+cp .env.example .env
+# edite o .env com suas credenciais
 
-4. **Suba os serviços auxiliares:**
-   ```bash
-   # Exemplo usando Docker Compose (ajuste conforme seu setup)
-   docker run -d --name redis-qa-service -p 6379:6379 redis
-   docker run -d --name pg-qa-service -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres
-   ```
+# 4. Suba os serviços auxiliares
+docker run -d --name redis-qa-service -p 6379:6379 redis
+docker run -d --name pg-qa-service -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres
 
-5. **Rode as migrações do banco:**
-   ```bash
-   yarn migrate # ou npm run migrate
-   ```
+# 5. Rode as migrações do banco
+yarn migrate
 
-6. **Inicie o bot do Slack:**
-   ```bash
-   npx ts-node src/slackBot.ts
-   ```
+# 6. Inicie o bot do Slack
+npx ts-node src/slackBot.ts
+```
 
-## 💬 Fluxo de Uso
-
-1. Poste uma mensagem de erro no canal do Slack monitorado.
-2. O bot analisa a mensagem com a Gemini AI, classifica o erro e sugere ações.
-3. O bot responde no Slack com um resumo e botões para criar/cancelar o card no Jira.
-4. Ao aprovar, o bot cria o card no Jira, mapeando categoria/impacto para tipo/prioridade válidos.
-5. Toda a análise é salva no banco para consulta futura.
+---
 
 ## 🧪 Testes
 
-Execute os testes unitários:
 ```bash
 yarn test
 ```
+
+---
 
 ## 📁 Estrutura do Projeto
 
 ```
 src/
 ├── modules/
-│   ├── ai-prompting/      # Integração com Gemini AI
-│   ├── alerting/          # Notificações e alertas (Slack)
-│   ├── api/               # Servidor Express (futuro: webhooks)
-│   └── advanced-features/ # Aprovação, escalonamento, etc.
+│   ├── ai-prompting/        # Integração com Gemini AI
+│   ├── alerting/            # Notificações e alertas (Slack)
+│   ├── api/                 # Servidor Express (futuro uso)
+│   └── advanced-features/   # Aprovação, escalonamento, etc.
 ├── shared/
-│   ├── config/            # Configurações de banco, Redis, etc.
-│   ├── infrastructure/    # Integração com Jira, Slack, logging
-│   ├── services/          # Serviços utilitários, repositórios
-│   └── database/          # Migrações e scripts SQL
-├── scripts/               # Scripts utilitários (ex: listar tipos do Jira)
-├── slackBot.ts            # Bot principal do Slack
-├── main.ts                # Ponto de entrada do servidor Express
-└── testAgentFlow.ts       # Script de teste/manual
+│   ├── config/              # Configurações gerais
+│   ├── infrastructure/      # Jira, Slack, logging
+│   ├── services/            # Repositórios e lógica de negócio
+│   └── database/            # Migrações SQL
+├── scripts/                 # Utilitários e ferramentas
+├── slackBot.ts              # Entrada do bot do Slack
+├── main.ts                  # Entrada principal do Express
+└── testAgentFlow.ts         # Script de teste manual
 ```
 
-## 📝 Exemplo de .env
+---
+
+## 🧾 Exemplo de .env
 
 ```env
 SLACK_BOT_TOKEN=...
@@ -124,14 +147,24 @@ POSTGRES_URL=postgres://postgres:postgres@localhost:5432/postgres
 REDIS_URL=redis://localhost:6379
 ```
 
+---
+
 ## 🤝 Contribuindo
 
-1. Faça um fork do repositório
-2. Crie sua branch (`git checkout -b feature/nova-funcionalidade`)
-3. Faça commit das suas alterações (`git commit -m 'feat: nova funcionalidade'`)
-4. Faça push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
+1. Faça um fork
+2. Crie uma branch: `git checkout -b feature/nova-funcionalidade`
+3. Commit suas alterações: `git commit -m 'feat: nova funcionalidade'`
+4. Push para a branch: `git push origin feature/nova-funcionalidade`
+5. Crie um Pull Request
 
-## 📝 Licença
+---
 
-Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para mais detalhes. 
+## 📜 Licença
+
+MIT — veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+## ⭐ Gostou do projeto?
+
+Se este projeto te ajudou ou te inspirou, **deixe uma estrela** ⭐ no repositório. Isso motiva o autor e ajuda o projeto a alcançar mais pessoas!
